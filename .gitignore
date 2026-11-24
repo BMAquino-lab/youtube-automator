@@ -1,0 +1,32 @@
+# Secrets & local Chrome sessions
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+dashboard/state/
+profile_ch*/
+
+# Heavy media & Blender runtime artifacts
+*.mp4
+*.mkv
+*.mov
+*.wav
+*.mp3
+*.blend
+*.blend1
+*.blend2
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ass
+
+# Workspace queues & caches
+outputs/
+episodes/
+previews/
+__pycache__/
+*.pyc
+.venv/
+publish.lock

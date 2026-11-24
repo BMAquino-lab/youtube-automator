@@ -1,0 +1,116 @@
+{
+  "tracker_version": "1.0",
+  "channel": "ch04",
+  "iterations": [
+    {
+      "iteration": 1,
+      "episode_id": "ep04_jackscrew_hotel",
+      "title": "Why He Hid 5,000 Jackscrews Under A Busy Hotel",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 39,
+      "unique_clips": 38,
+      "approx_render_wall_min": 80.0,
+      "duration_s": 69.1,
+      "wpm": 210,
+      "word_recall_pct": 95,
+      "hook_luma": 47,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "elevenlabs_liam",
+      "upgrades_applied": [
+        "baseline_blender_42_eevee_next",
+        "16_emotion_4k_uv_face_atlas",
+        "5_isolated_diorama_collections",
+        "frame0_exact_extraction"
+      ],
+      "recorded_at": "2026-11-24T16:04:00+08:00"
+    },
+    {
+      "iteration": 2,
+      "episode_id": "ep05_ghost_army_tanks",
+      "title": "Why The Army Inflated Rubber Tanks In WWII",
+      "resolution": "576x1024",
+      "fps": 15,
+      "samples": 4,
+      "total_shots": 40,
+      "unique_clips": 38,
+      "approx_render_wall_min": 21.86,
+      "duration_s": 69.1,
+      "wpm": 205,
+      "word_recall_pct": 94,
+      "hook_luma": 120,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "elevenlabs_liam",
+      "upgrades_applied": [
+        "v2_fast_pipeline_ricksclips_pop"
+      ],
+      "recorded_at": "2026-11-24T11:10:40.123927+00:00"
+    },
+    {
+      "iteration": 3,
+      "episode_id": "ep06_dazzle_warships",
+      "title": "Why The Navy Painted Warships Like Bright Zebras",
+      "resolution": "576x1024",
+      "fps": 15,
+      "samples": 4,
+      "total_shots": 44,
+      "unique_clips": 40,
+      "approx_render_wall_min": 15.33,
+      "duration_s": 69.1,
+      "wpm": 210,
+      "word_recall_pct": 95,
+      "hook_luma": 122,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "elevenlabs_liam",
+      "upgrades_applied": [
+        "v3_background_crew_3d_callouts_naval"
+      ],
+      "recorded_at": "2026-11-24T11:57:30.749632+00:00"
+    }
+  ],
+  "next_iteration_upgrades": [
+    {
+      "id": "v2_fast_pipeline_ricksclips_pop",
+      "title": "5x Render Speed Profile + @RicksClips3000 Character Pop & Sunlit Dioramas",
+      "details": "Switch Blender renders to 576x1024 @ 15fps / samples=4 / LOW Bloom (~5x faster), add pure white high-emission 2D cutout pop + FURIOUS purple head gag + mid-shot emotion swaps + squash-and-stretch breathing + sunlit sky/diorama modular library + JSON episode pipeline",
+      "status": "done (iter 2)"
+    },
+    {
+      "id": "v3_background_crew_3d_callouts_naval",
+      "title": "Background Crowd Actors, Pulsing 3D Callout Arrows & Optical Reticle Rig",
+      "details": "Add spawn_background_crew for lively busy scenes, pulsing 3D directional arrows for proof beats, coincidence rangefinder reticle rig, and sunlit rolling ocean / drydock / submarine sets",
+      "status": "done (iter 3)"
+    },
+    {
+      "id": "v4_beveled_prop_shadows_rim_dof",
+      "title": "Foreground Silhouette Framing Props & Tight Rack-Focus Transitions",
+      "details": "Add subtle blurred foreground framing silhouettes (branches, railings, rivets) and focus-distance keyframe shifts mid-shot for stronger miniature tilt-shift depth",
+      "status": "pending"
+    },
+    {
+      "id": "v5_motion_fx_streaks_dust_sparks",
+      "title": "Stylized Action Speed Lines, Sweating Drops & Steam Puffs",
+      "details": "Attach animated 3D comic sweat-drop beads on NERVOUS_SWEAT, drifting steam puffs on FURIOUS, and radial burst streaks on SHOCK reactions",
+      "status": "pending"
+    },
+    {
+      "id": "v6_multi_prop_hand_swaps",
+      "title": "Two-Handed Prop Interactions & Shared Set Choreography",
+      "details": "Support two-actor synchronized prop lifting/handing off and animated multi-piece diorama reveals across sets",
+      "status": "pending"
+    },
+    {
+      "id": "v7_dynamic_headline_cards",
+      "title": "Animated In-World Crinkled Newspaper & Stamped Telegram Props",
+      "details": "Generate procedural period-authentic newspapers and stamped brass plaques tilted in 3D space with dynamic rack focus",
+      "status": "pending"
+    },
+    {
+      "id": "v8_sound_visual_sync_hooks",
+      "title": "Beat-Synced Character Emphasis & Camera Micro-Shake on Impact",
+      "details": "Trigger crisp 3-frame micro-bounce + slight FOV punch on words tagged with sfx=impact in timeline_resolved.json",
+      "status": "pending"
+    }
+  ]
+}

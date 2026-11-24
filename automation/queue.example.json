@@ -1,0 +1,81 @@
+{
+  "channel": "ch04",
+  "channel_name": "Fivestack (@Fivestackkk)",
+  "timezone": "Asia/Manila",
+  "upload_slots_asia_manila": [
+    "20:00",
+    "00:00",
+    "03:00"
+  ],
+  "target_buffer_size": 4,
+  "items": [
+    {
+      "episode_id": "ep04_jackscrew_hotel",
+      "title": "Why He Hid 5,000 Jackscrews Under A Busy Hotel",
+      "description": "In 1861, young engineer George Pullman placed 500 workers and 5,000 iron jackscrews beneath Chicago's six-story brick Tremont House hotel and hoisted the entire building six feet out of the swamp without closing for an hour. #shorts #history #engineering #fivestack",
+      "master_mp4": "outputs/ep04_jackscrew_hotel/master.mp4",
+      "qa_report_json": "outputs/ep04_jackscrew_hotel/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep04_jackscrew_hotel/contact_sheet.jpg",
+      "status": "published",
+      "iteration": 1
+    },
+    {
+      "episode_id": "ep05_ghost_army_tanks",
+      "title": "Why The Army Inflated Rubber Tanks In WWII",
+      "description": "In 1944, the US Army Ghost Army deployed 93-pound inflatable rubber tanks and 500-pound truck speakers audible 15 miles away to trick German armies on D-Day. #shorts #history #ww2 #fivestack",
+      "master_mp4": "outputs/ep05_ghost_army_tanks/master.mp4",
+      "qa_report_json": "outputs/ep05_ghost_army_tanks/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep05_ghost_army_tanks/contact_sheet.jpg",
+      "status": "published",
+      "iteration": 2
+    },
+    {
+      "episode_id": "ep06_dazzle_warships",
+      "title": "Why The Navy Painted Warships Like Bright Zebras",
+      "description": "In 1917, British marine artist Norman Wilkinson convinced Allied docks to paint over 4,000 warships in bright geometric Dazzle stripes to scramble German U-boat rangefinder optics by up to 40 degrees. #shorts #history #ww1 #fivestack",
+      "master_mp4": "outputs/ep06_dazzle_warships/master.mp4",
+      "qa_report_json": "outputs/ep06_dazzle_warships/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep06_dazzle_warships/contact_sheet.jpg",
+      "status": "ready",
+      "iteration": 3
+    }
+  ],
+  "topic_backlog": [
+    {
+      "slug": "ep07_deadliest_paper_map",
+      "title_idea": "Why Cartographers Drew A Fake Town On Purpose",
+      "hook_object": "paper town",
+      "summary": "Mapmakers invented fictional copyright trap towns like Agloe, New York to catch rival publishers copying their maps until travelers built a real store there."
+    },
+    {
+      "slug": "ep08_concrete_ships_ww2",
+      "title_idea": "Why The Navy Built Cargo Ships Out Of Concrete",
+      "hook_object": "concrete hull",
+      "summary": "Facing a wartime steel shortage, engineers poured steel-reinforced lightweight concrete into floating Liberty ship molds that hauled cargo across the Pacific."
+    },
+    {
+      "slug": "ep09_glomar_explorer_sub",
+      "title_idea": "Why A Billionaire Mined Rocks With A Giant Claw",
+      "hook_object": "mining ship",
+      "summary": "The CIA partnered with Howard Hughes to pretend the massive Hughes Glomar Explorer was harvesting ocean manganese nodules while secretly raising a sunken Soviet submarine three miles down."
+    },
+    {
+      "slug": "ep10_backward_typewriter_keys",
+      "title_idea": "Why Keyboard Letters Are Scrambled Out Of Order",
+      "hook_object": "typebar hammers",
+      "summary": "Christopher Latham Sholes rearranged common adjacent letter pairs into QWERTY so neighboring mechanical typebars would stop colliding and jamming mid-word."
+    },
+    {
+      "slug": "ep11_london_fake_house",
+      "title_idea": "Why This Expensive London Townhouse Has Painted Windows",
+      "hook_object": "painted windows",
+      "summary": "Numbers 23 and 24 Leinster Gardens in London look like grand five-story Victorian homes from the street until you see their 5-foot facade hiding open Metropolitan Line steam vents."
+    },
+    {
+      "slug": "ep12_pykrete_ice_carrier",
+      "title_idea": "Why Engineers Mixed Sawdust Into Ship Ice",
+      "hook_object": "sawdust ice",
+      "summary": "Project Habakkuk blended 14% wood pulp into water ice to create pykrete stronger than unarmored steel so a gunshot ricocheted off an ice block in front of admirals."
+    }
+  ]
+}
