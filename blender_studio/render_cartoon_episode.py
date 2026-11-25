@@ -250,8 +250,16 @@ def stage_shot(
         for hp in ca.get("held_props", []):
             act.set_prop_visible(hp, True)
 
-        if ca.get("mid_emotion"):
-            mid_f = max(2, min(n_frames, int(round(n_frames * float(ca.get("mid_frame_frac", 0.50))))))
+        mid_f = max(2, min(n_frames, int(round(n_frames * float(ca.get("mid_frame_frac", 0.50)))))) if ca.get("mid_emotion") else None
+        if action in ("idle_talk", "point", "paint_stroke", "peer_periscope", "salute", "laugh"):
+            act.animate_lip_flap(
+                1,
+                n_frames,
+                emo,
+                mid_emotion=ca.get("mid_emotion"),
+                mid_frame=mid_f,
+            )
+        elif ca.get("mid_emotion") and mid_f is not None:
             act.set_emotion_at(mid_f, ca["mid_emotion"])
 
     cm = shot_spec["camera"]
@@ -266,7 +274,7 @@ def stage_shot(
         lens0=float(cm.get("lens0", 40.0)),
         lens1=float(cm.get("lens1", cm.get("lens0", 40.0))),
         fstop=float(cm.get("fstop", 3.2)),
-        use_dof=bool(cm.get("use_dof", True)),
+        use_dof=bool(cm.get("use_dof", False)),
     )
 
 
@@ -289,10 +297,10 @@ def main() -> None:
     ap.add_argument("--check-frames", action="store_true")
     ap.add_argument("--only", default="")
     ap.add_argument("--worker", default="")
-    ap.add_argument("--width", type=int, default=576)
-    ap.add_argument("--height", type=int, default=1024)
-    ap.add_argument("--fps", type=int, default=15)
-    ap.add_argument("--samples", type=int, default=4)
+    ap.add_argument("--width", type=int, default=720)
+    ap.add_argument("--height", type=int, default=1280)
+    ap.add_argument("--fps", type=int, default=24)
+    ap.add_argument("--samples", type=int, default=8)
     args = ap.parse_args(argv)
 
     ep_dir = Path(args.ep_dir).resolve()
@@ -304,8 +312,7 @@ def main() -> None:
         width=args.width,
         height=args.height,
         samples=args.samples,
-        bloom=True,
-        bloom_quality="LOW",
+        bloom=False,
     )
 
     cast_col = K.get_or_create_collection("Cast")

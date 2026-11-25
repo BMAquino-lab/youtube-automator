@@ -68,11 +68,11 @@ def _load_image_cached(path: Path, non_color: bool = False) -> bpy.types.Image:
 
 
 def reset_scene(
-    fps: int = 15,
-    width: int = 576,
-    height: int = 1024,
-    samples: int = 4,
-    bloom: bool = True,
+    fps: int = 24,
+    width: int = 720,
+    height: int = 1280,
+    samples: int = 8,
+    bloom: bool = False,
     bloom_quality: str = "LOW",
 ) -> bpy.types.Scene:
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -85,6 +85,14 @@ def reset_scene(
     scn.eevee.taa_render_samples = samples
     scn.eevee.use_raytracing = False
     scn.eevee.use_shadows = True
+    if hasattr(scn.eevee, "use_shadow_jitter_viewport"):
+        scn.eevee.use_shadow_jitter_viewport = False
+    if hasattr(scn.eevee, "shadow_ray_count"):
+        scn.eevee.shadow_ray_count = 1
+    if hasattr(scn.eevee, "shadow_step_count"):
+        scn.eevee.shadow_step_count = 6
+    if hasattr(scn.eevee, "use_taa_reprojection"):
+        scn.eevee.use_taa_reprojection = False
 
     scn.view_settings.view_transform = "Standard"
     scn.view_settings.look = "Medium High Contrast"
@@ -197,6 +205,55 @@ def make_toon_mat(name: str, hex_color: str, emission_lift: float = 0.14, roughn
     return mat
 
 
+def make_cel_cutout_mat(
+    name: str,
+    lit_hex: str = "#FCFBF8",
+    shadow_hex: str = "#DFDDD6",
+    cutoff: float = 0.28,
+) -> bpy.types.Material:
+    """Zero-grain 2-tone cel cutout shader immune to sky ambient blue wash (with animatable HeadTint node)."""
+    if name in bpy.data.materials:
+        return bpy.data.materials[name]
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nodes = nt.nodes
+    links = nt.links
+    nodes.clear()
+
+    out = nodes.new("ShaderNodeOutputMaterial")
+    diff = nodes.new("ShaderNodeBsdfDiffuse")
+    diff.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    s2r = nodes.new("ShaderNodeShaderToRGB")
+    links.new(diff.outputs["BSDF"], s2r.inputs["Shader"])
+
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "LINEAR"
+    ramp.color_ramp.elements[0].position = max(0.02, cutoff - 0.06)
+    ramp.color_ramp.elements[0].color = hex_rgba(shadow_hex)
+    ramp.color_ramp.elements[1].position = min(0.98, cutoff + 0.06)
+    ramp.color_ramp.elements[1].color = hex_rgba(lit_hex)
+    links.new(s2r.outputs["Color"], ramp.inputs["Fac"])
+
+    tint = nodes.new("ShaderNodeRGB")
+    tint.name = "HeadTint"
+    tint.label = "HeadTint"
+    tint.outputs[0].default_value = (1.0, 1.0, 1.0, 1.0)
+
+    mix = nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.blend_type = "MULTIPLY"
+    mix.inputs["Factor"].default_value = 1.0
+    links.new(ramp.outputs["Color"], mix.inputs[6])
+    links.new(tint.outputs[0], mix.inputs[7])
+
+    em = nodes.new("ShaderNodeEmission")
+    em.inputs["Strength"].default_value = 0.96
+    links.new(mix.outputs[2], em.inputs["Color"])
+    links.new(em.outputs["Emission"], out.inputs["Surface"])
+    return mat
+
+
 def make_emissive_mat(name: str, hex_color: str, strength: float = 4.0) -> bpy.types.Material:
     if name in bpy.data.materials:
         return bpy.data.materials[name]
@@ -218,6 +275,7 @@ def make_pbr_mat(
     tint_hex: str = "#FFFFFF",
     uv_scale: float = 3.0,
     roughness_bias: float = 0.0,
+    emission_lift: float = 0.12,
 ) -> bpy.types.Material:
     if name in bpy.data.materials:
         return bpy.data.materials[name]
@@ -250,6 +308,9 @@ def make_pbr_mat(
     mix.inputs[6].default_value = hex_rgba(tint_hex)
     links.new(col_tex.outputs["Color"], mix.inputs[7])
     links.new(mix.outputs[2], bsdf.inputs["Base Color"])
+    if emission_lift > 0.0 and "Emission Color" in bsdf.inputs:
+        links.new(mix.outputs[2], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = emission_lift
 
     if (folder / "roughness.png").exists():
         r_tex = nodes.new("ShaderNodeTexImage")
@@ -682,23 +743,23 @@ def add_sunlit_sky_rig(
     sky_strength: float = 0.82,
     sun_disc_loc: tuple[float, float, float] | None = (-5.5, -14.0, 9.5),
 ) -> list[bpy.types.Object]:
-    """Bright @RicksClips3000-style daylight / golden-hour sky dome, raking directional SUN, and glowing sun disc."""
+    """Bright @RicksClips3000-style daylight / golden-hour sky dome, crisp shadow SUN, and zero-cost sun halo."""
     setup_world_sky(sky_top, sky_horizon, strength=sky_strength)
     objs: list[bpy.types.Object] = []
     sd = bpy.data.lights.new(f"{name}_Sun", type="SUN")
     sd.energy = sun_energy
     sd.color = hex_rgba(sun_color)[:3]
-    sd.angle = math.radians(3.5)
+    sd.angle = math.radians(1.0)
     so = bpy.data.objects.new(f"{name}_Sun", sd)
     so.location = (0.0, 0.0, 8.0)
     so.rotation_euler = tuple(math.radians(a) for a in sun_rot_deg)
     link_to_collection(so, col)
     objs.append(so)
 
-    # Soft cool fill light so front faces/silhouettes never go pitch black in backlight
+    # Warm balanced fill so cutout stickmen & props stay clean without blue ambient tint
     fd = bpy.data.lights.new(f"{name}_SkyFill", type="AREA")
-    fd.energy = 35.0
-    fd.color = hex_rgba("#D6EBFF")[:3]
+    fd.energy = 42.0
+    fd.color = hex_rgba("#FFF4E0")[:3]
     fd.size = 8.0
     fo = bpy.data.objects.new(f"{name}_SkyFill", fd)
     fo.location = (2.5, 6.5, 3.8)
@@ -708,11 +769,42 @@ def add_sunlit_sky_rig(
     objs.append(fo)
 
     if sun_disc_loc is not None:
-        m_sun = make_emissive_mat(f"{name}_SunDiscMat", "#FFF7D6", strength=8.0)
-        disc = add_sphere(f"{name}_SunDisc", 1.35, sun_disc_loc, m_sun, col, segments=20, rings=14)
+        m_sun = make_emissive_mat(f"{name}_SunDiscMat", "#FFF9E2", strength=1.35)
+        disc = add_sphere(f"{name}_SunDisc", 1.30, sun_disc_loc, m_sun, col, segments=20, rings=14)
         if hasattr(disc, "visible_shadow"):
             disc.visible_shadow = False
         objs.append(disc)
+        # Soft smooth radial sun halo using Layer Weight Facing -> EASE falloff to 0 at rim (zero compositor glare)
+        m_halo = bpy.data.materials.new(f"{name}_SunHaloMat")
+        m_halo.use_nodes = True
+        if hasattr(m_halo, "surface_render_method"):
+            m_halo.surface_render_method = "BLENDED"
+        nt = m_halo.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        lw = nt.nodes.new("ShaderNodeLayerWeight")
+        lw.inputs["Blend"].default_value = 0.5
+        hramp = nt.nodes.new("ShaderNodeValToRGB")
+        hramp.color_ramp.interpolation = "EASE"
+        hramp.color_ramp.elements[0].position = 0.0
+        hramp.color_ramp.elements[0].color = (0.42, 0.42, 0.42, 1.0)
+        hramp.color_ramp.elements[1].position = 0.72
+        hramp.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0)
+        nt.links.new(lw.outputs["Facing"], hramp.inputs["Fac"])
+
+        mix_h = nt.nodes.new("ShaderNodeMixShader")
+        tr_h = nt.nodes.new("ShaderNodeBsdfTransparent")
+        em_h = nt.nodes.new("ShaderNodeEmission")
+        em_h.inputs["Color"].default_value = hex_rgba("#FFF2B8")
+        em_h.inputs["Strength"].default_value = 1.15
+        nt.links.new(hramp.outputs["Color"], mix_h.inputs["Fac"])
+        nt.links.new(tr_h.outputs["BSDF"], mix_h.inputs[1])
+        nt.links.new(em_h.outputs["Emission"], mix_h.inputs[2])
+        nt.links.new(mix_h.outputs["Shader"], out.inputs["Surface"])
+        halo = add_sphere(f"{name}_SunHalo", 2.05, sun_disc_loc, m_halo, col, segments=24, rings=16)
+        if hasattr(halo, "visible_shadow"):
+            halo.visible_shadow = False
+        objs.append(halo)
     return objs
 
 
@@ -821,7 +913,7 @@ def _build_spherical_face_patch(actor_name: str, head_z: float = 2.04, radius: f
     mat = bpy.data.materials.new(f"{actor_name}_FaceMat")
     mat.use_nodes = True
     if hasattr(mat, "surface_render_method"):
-        mat.surface_render_method = "DITHERED"
+        mat.surface_render_method = "BLENDED"
     mat.use_backface_culling = False
 
     nt = mat.node_tree
@@ -830,10 +922,13 @@ def _build_spherical_face_patch(actor_name: str, head_z: float = 2.04, radius: f
     nodes.clear()
 
     out = nodes.new("ShaderNodeOutputMaterial")
-    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.inputs["Roughness"].default_value = 0.65
-    bsdf.inputs["Specular IOR Level"].default_value = 0.05
-    links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    mix_sh = nodes.new("ShaderNodeMixShader")
+    transp = nodes.new("ShaderNodeBsdfTransparent")
+    em = nodes.new("ShaderNodeEmission")
+    em.inputs["Strength"].default_value = 1.0
+    links.new(transp.outputs["BSDF"], mix_sh.inputs[1])
+    links.new(em.outputs["Emission"], mix_sh.inputs[2])
+    links.new(mix_sh.outputs["Shader"], out.inputs["Surface"])
 
     uv_node = nodes.new("ShaderNodeUVMap")
     uv_node.uv_map = "UVMap"
@@ -848,7 +943,7 @@ def _build_spherical_face_patch(actor_name: str, head_z: float = 2.04, radius: f
     row_node = nodes.new("ShaderNodeValue")
     row_node.name = "FaceRow"
     row_node.label = "FaceRow"
-    row_node.outputs[0].default_value = 3.0
+    row_node.outputs[0].default_value = 4.0
 
     add_u = nodes.new("ShaderNodeMath")
     add_u.operation = "ADD"
@@ -880,11 +975,8 @@ def _build_spherical_face_patch(actor_name: str, head_z: float = 2.04, radius: f
     tex.interpolation = "Linear"
     links.new(comb.outputs["Vector"], tex.inputs["Vector"])
 
-    links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-    if "Emission Color" in bsdf.inputs:
-        links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
-        bsdf.inputs["Emission Strength"].default_value = 0.18
+    links.new(tex.outputs["Alpha"], mix_sh.inputs["Fac"])
+    links.new(tex.outputs["Color"], em.inputs["Color"])
 
     obj.data.materials.append(mat)
     return obj, col_node, row_node
@@ -922,7 +1014,7 @@ class StickmanActor:
         }
         t_hex = torso_hex or default_colors.get(preset, "#2B7A78")
 
-        m_head = make_toon_mat(f"{name}_WhiteHead", "#F5F5F3", emission_lift=0.20, roughness=0.85)
+        m_head = make_cel_cutout_mat(f"{name}_WhiteHead", "#FCFBF8", "#DFDDD6", cutoff=0.28)
         self.head_mat = m_head
         m_torso = make_toon_mat(f"{name}_Torso", t_hex, emission_lift=0.16, roughness=0.78)
         m_ink = make_toon_mat(f"{name}_LimbInk", "#161316", emission_lift=0.04, roughness=0.70)
@@ -1439,25 +1531,77 @@ class StickmanActor:
                 for kp in fc.keyframe_points:
                     kp.interpolation = "CONSTANT"
 
-        # @RicksClips3000 rage color gag: flush head purple on FURIOUS, crisp white otherwise
+        # @RicksClips3000 rage color gag: flush head purple on FURIOUS, crisp paper-white otherwise
         if hasattr(self, "head_mat") and self.head_mat and self.head_mat.node_tree:
-            bsdf = self.head_mat.node_tree.nodes.get("Principled BSDF")
-            if bsdf:
-                h_rgba = hex_rgba("#C688E8" if em == "FURIOUS" else "#F5F5F3")
-                bsdf.inputs["Base Color"].default_value = h_rgba
-                bsdf.inputs["Base Color"].keyframe_insert(data_path="default_value", frame=frame)
-                if "Emission Color" in bsdf.inputs:
-                    bsdf.inputs["Emission Color"].default_value = h_rgba
-                    bsdf.inputs["Emission Color"].keyframe_insert(data_path="default_value", frame=frame)
-                hnt = self.head_mat.node_tree
-                if hnt.animation_data and hnt.animation_data.action:
-                    for fc in hnt.animation_data.action.fcurves:
-                        for kp in fc.keyframe_points:
-                            kp.interpolation = "CONSTANT"
+            h_rgba = hex_rgba("#D478FF") if em == "FURIOUS" else (1.0, 1.0, 1.0, 1.0)
+            tint = self.head_mat.node_tree.nodes.get("HeadTint")
+            if tint is not None:
+                tint.outputs[0].default_value = h_rgba
+                tint.outputs[0].keyframe_insert(data_path="default_value", frame=frame)
+            else:
+                bsdf = self.head_mat.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    w_rgba = hex_rgba("#D478FF" if em == "FURIOUS" else "#FCFBF8")
+                    bsdf.inputs["Base Color"].default_value = w_rgba
+                    bsdf.inputs["Base Color"].keyframe_insert(data_path="default_value", frame=frame)
+                    if "Emission Color" in bsdf.inputs:
+                        bsdf.inputs["Emission Color"].default_value = w_rgba
+                        bsdf.inputs["Emission Color"].keyframe_insert(data_path="default_value", frame=frame)
+            hnt = self.head_mat.node_tree
+            if hnt.animation_data and hnt.animation_data.action:
+                for fc in hnt.animation_data.action.fcurves:
+                    for kp in fc.keyframe_points:
+                        kp.interpolation = "CONSTANT"
 
     def set_emotion_at(self, frame: int, emotion: str) -> None:
         """Key a mid-shot CONSTANT face expression (and optional FURIOUS purple flush) swap."""
         self.key_face(frame, emotion)
+
+    def animate_lip_flap(
+        self,
+        f0: int,
+        f1: int,
+        base_emotion: str,
+        *,
+        mid_emotion: str | None = None,
+        mid_frame: int | None = None,
+    ) -> None:
+        """Alternate mouth open/closed every ~4 frames at 24fps + one natural blink (preserving frame f0)."""
+        talk_map = {
+            "HAPPY": "TALK_OPEN",
+            "NEUTRAL": "TALK_OPEN",
+            "SMUG": "TALK_OPEN",
+            "NERVOUS_SWEAT": "TALK_OPEN",
+            "DETERMINED": "TALK_SERIOUS",
+            "DEADPAN": "TALK_SERIOUS",
+            "SUSPICIOUS": "TALK_SERIOUS",
+            "CONFUSED": "TALK_SERIOUS",
+            "SAD": "TALK_SERIOUS",
+            "ANGRY": "TALK_ANGRY",
+        }
+        self.key_face(f0, base_emotion)
+        if mid_emotion and mid_frame is not None and f0 < mid_frame <= f1:
+            self.key_face(mid_frame, mid_emotion)
+
+        blink_f = f0 + max(8, int(round((f1 - f0) * 0.58)))
+        f = f0 + 4
+        open_mouth = True
+        while f <= f1 - 2:
+            cur_base = mid_emotion if (mid_emotion and mid_frame is not None and f >= mid_frame) else base_emotion
+            if cur_base in ("FURIOUS", "SHOCK", "SCREAM", "CRYING", "LAUGH", "SLEEPY", "BLINK"):
+                f += 4
+                continue
+            if abs(f - blink_f) <= 1 and cur_base != "FURIOUS":
+                self.key_face(f, "BLINK")
+                self.key_face(min(f1, f + 2), cur_base)
+                f += 4
+                open_mouth = True
+                continue
+            talk_em = talk_map.get(cur_base)
+            if talk_em and talk_em in ATLAS_META["faces"]:
+                self.key_face(f, talk_em if open_mouth else cur_base)
+                open_mouth = not open_mouth
+            f += 4
 
     def key_pose(
         self,
@@ -1515,6 +1659,8 @@ class StickmanActor:
                 for kp in fc.keyframe_points:
                     if int(round(kp.co.x)) == frame:
                         kp.interpolation = interp
+                        if interp in ("BACK", "QUAD", "CUBIC") and hasattr(kp, "easing"):
+                            kp.easing = "EASE_OUT"
 
     def animate_idle_talk(
         self,
@@ -1526,59 +1672,70 @@ class StickmanActor:
         intensity: float = 1.0,
     ) -> None:
         self.key_face(f0, emotion)
+        atk = min(f1, f0 + max(5, (f1 - f0) // 6))
         mid = (f0 + f1) // 2
-        q1 = max(f0 + 1, f0 + (f1 - f0) // 4)
-        q3 = max(mid + 1, f0 + 3 * (f1 - f0) // 4)
+        q3 = min(f1, f0 + (3 * (f1 - f0)) // 4)
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
-            torso_scale=(1.02, 1.02, 0.97),
-            pelvis_loc=(0.0, 0.0, 0.0),
-            torso_rot_deg=(-3.0 * intensity, 0.0, 4.0 * intensity),
-            head_rot_deg=(-5.0 * intensity, 0.0, 7.0 * intensity),
-            arm_l_deg=(18.0, 0.0, -14.0),
-            forearm_l_deg=(36.0, 0.0, 8.0),
-            arm_r_deg=(32.0 * intensity, 0.0, 16.0),
-            forearm_r_deg=(48.0 * intensity, 0.0, -10.0),
+            torso_scale=(1.04, 1.04, 0.95),
+            pelvis_loc=(0.0, 0.0, -0.02),
+            torso_rot_deg=(-4.0 * intensity, 0.0, 5.0 * intensity),
+            head_rot_deg=(-6.0 * intensity, 0.0, 8.0 * intensity),
+            arm_l_deg=(20.0, 0.0, -14.0),
+            forearm_l_deg=(38.0, 0.0, 8.0),
+            arm_r_deg=(36.0 * intensity, 0.0, 18.0),
+            forearm_r_deg=(52.0 * intensity, 0.0, -12.0),
             thigh_l_deg=(0.0, 0.0, -3.0),
             shin_l_deg=(0.0, 0.0, 0.0),
             thigh_r_deg=(0.0, 0.0, 3.0),
             shin_r_deg=(0.0, 0.0, 0.0),
+            interp="BACK",
         )
         self.key_pose(
-            q1,
-            torso_scale=(0.98, 0.98, 1.03),
-            pelvis_loc=(0.0, 0.0, 0.035 * intensity),
-            head_rot_deg=(6.0 * intensity, 3.0 * intensity, -4.0 * intensity),
+            atk,
+            torso_scale=(0.96, 0.96, 1.05),
+            pelvis_loc=(0.0, 0.0, 0.045 * intensity),
+            torso_rot_deg=(3.0 * intensity, 0.0, -4.0 * intensity),
+            head_rot_deg=(8.0 * intensity, 3.0 * intensity, -6.0 * intensity),
+            arm_l_deg=(34.0 * intensity, 0.0, -20.0),
+            forearm_l_deg=(62.0 * intensity, 0.0, 14.0),
+            arm_r_deg=(66.0 * intensity, 0.0, 24.0),
+            forearm_r_deg=(72.0 * intensity, 0.0, -18.0),
+            interp="BACK",
         )
         self.key_pose(
             mid,
-            torso_scale=(1.02, 1.02, 0.97),
-            pelvis_loc=(0.0, 0.0, -0.01 * intensity),
-            torso_rot_deg=(2.0 * intensity, 0.0, -3.0 * intensity),
-            head_rot_deg=(-4.0 * intensity, 4.0 * intensity, -8.0 * intensity),
-            arm_l_deg=(28.0 * intensity, 0.0, -18.0),
-            forearm_l_deg=(54.0 * intensity, 0.0, 12.0),
-            arm_r_deg=(58.0 * intensity, 0.0, 22.0),
-            forearm_r_deg=(65.0 * intensity, 0.0, -16.0),
+            torso_scale=(1.03, 1.03, 0.97),
+            pelvis_loc=(0.0, 0.0, -0.015 * intensity),
+            torso_rot_deg=(-2.0 * intensity, 0.0, 4.0 * intensity),
+            head_rot_deg=(-5.0 * intensity, 4.0 * intensity, 6.0 * intensity),
+            arm_l_deg=(24.0 * intensity, 0.0, -16.0),
+            forearm_l_deg=(46.0 * intensity, 0.0, 10.0),
+            arm_r_deg=(48.0 * intensity, 0.0, 18.0),
+            forearm_r_deg=(58.0 * intensity, 0.0, -14.0),
+            interp="BEZIER",
         )
         self.key_pose(
             q3,
-            torso_scale=(0.98, 0.98, 1.03),
-            pelvis_loc=(0.0, 0.0, 0.03 * intensity),
-            head_rot_deg=(5.0 * intensity, -3.0 * intensity, 3.0 * intensity),
+            torso_scale=(0.97, 0.97, 1.04),
+            pelvis_loc=(0.0, 0.0, 0.035 * intensity),
+            head_rot_deg=(7.0 * intensity, -3.0 * intensity, -5.0 * intensity),
+            arm_r_deg=(62.0 * intensity, 0.0, 22.0),
+            forearm_r_deg=(70.0 * intensity, 0.0, -16.0),
+            interp="BACK",
         )
         self.key_pose(
             f1,
             torso_scale=(1.0, 1.0, 1.0),
             pelvis_loc=(0.0, 0.0, 0.0),
-            torso_rot_deg=(-2.0 * intensity, 0.0, 3.0 * intensity),
-            head_rot_deg=(-3.0 * intensity, -2.0 * intensity, 4.0 * intensity),
-            arm_l_deg=(20.0, 0.0, -14.0),
-            forearm_l_deg=(40.0, 0.0, 8.0),
-            arm_r_deg=(38.0 * intensity, 0.0, 14.0),
-            forearm_r_deg=(52.0 * intensity, 0.0, -12.0),
+            torso_rot_deg=(-2.0 * intensity, 0.0, 2.0 * intensity),
+            head_rot_deg=(-2.0 * intensity, -2.0 * intensity, 3.0 * intensity),
+            arm_l_deg=(22.0, 0.0, -14.0),
+            forearm_l_deg=(42.0, 0.0, 8.0),
+            arm_r_deg=(40.0 * intensity, 0.0, 14.0),
+            forearm_r_deg=(54.0 * intensity, 0.0, -12.0),
         )
 
     def animate_whistle_blow(
@@ -1674,11 +1831,12 @@ class StickmanActor:
         yaw_deg: float = 0.0,
     ) -> None:
         self.key_face(f0, "LAUGH")
-        step = max(4, (f1 - f0) // 4)
+        step = max(4, (f1 - f0) // 5)
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
+            torso_scale=(1.04, 1.04, 0.95),
             pelvis_loc=(0.0, 0.0, 0.0),
             torso_rot_deg=(8.0, 0.0, 0.0),
             head_rot_deg=(16.0, 0.0, 0.0),
@@ -1686,16 +1844,20 @@ class StickmanActor:
             forearm_l_deg=(68.0, 0.0, 22.0),
             arm_r_deg=(35.0, 0.0, 24.0),
             forearm_r_deg=(68.0, 0.0, -22.0),
+            interp="BACK",
         )
         for i, f in enumerate(range(f0 + step, f1 + 1, step)):
-            up = 0.06 if (i % 2 == 0) else -0.02
+            up = 0.07 if (i % 2 == 0) else -0.02
+            ts = (0.96, 0.96, 1.05) if (i % 2 == 0) else (1.03, 1.03, 0.96)
             self.key_pose(
                 min(f, f1),
+                torso_scale=ts,
                 pelvis_loc=(0.0, 0.0, up),
-                torso_rot_deg=(12.0 if i % 2 == 0 else 5.0, 0.0, 4.0 if i % 2 == 0 else -4.0),
-                head_rot_deg=(22.0 if i % 2 == 0 else 12.0, 0.0, 6.0 if i % 2 == 0 else -6.0),
-                arm_l_deg=(48.0 if i % 2 == 0 else 28.0, 0.0, -28.0),
-                arm_r_deg=(48.0 if i % 2 == 0 else 28.0, 0.0, 28.0),
+                torso_rot_deg=(14.0 if i % 2 == 0 else 5.0, 0.0, 5.0 if i % 2 == 0 else -5.0),
+                head_rot_deg=(24.0 if i % 2 == 0 else 10.0, 0.0, 7.0 if i % 2 == 0 else -7.0),
+                arm_l_deg=(54.0 if i % 2 == 0 else 28.0, 0.0, -28.0),
+                arm_r_deg=(54.0 if i % 2 == 0 else 28.0, 0.0, 28.0),
+                interp="BACK",
             )
 
     def animate_shock_recoil(
@@ -1707,36 +1869,51 @@ class StickmanActor:
         emotion: str = "SHOCK",
     ) -> None:
         self.key_face(f0, emotion)
-        f_pop = min(f1, f0 + max(6, (f1 - f0) // 3))
+        f_pop = min(f1, f0 + 6)
+        f_settle = min(f1, f0 + max(12, (f1 - f0) // 2))
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
-            pelvis_loc=(0.0, 0.0, -0.04),
+            torso_scale=(1.06, 1.06, 0.93),
+            pelvis_loc=(0.0, 0.0, -0.05),
             torso_rot_deg=(4.0, 0.0, 0.0),
             head_rot_deg=(6.0, 0.0, 0.0),
             arm_l_deg=(35.0, 0.0, -22.0),
             forearm_l_deg=(55.0, 0.0, 12.0),
             arm_r_deg=(35.0, 0.0, 22.0),
             forearm_r_deg=(55.0, 0.0, -12.0),
+            interp="BACK",
         )
         self.key_pose(
             f_pop,
-            pelvis_loc=(0.0, -0.08, 0.06),
-            torso_rot_deg=(12.0, 0.0, -4.0),
-            head_rot_deg=(16.0, 0.0, 6.0),
-            arm_l_deg=(95.0, 0.0, -34.0),
-            forearm_l_deg=(88.0, 0.0, 18.0),
-            arm_r_deg=(95.0, 0.0, 34.0),
-            forearm_r_deg=(88.0, 0.0, -18.0),
+            torso_scale=(0.95, 0.95, 1.07),
+            pelvis_loc=(0.0, -0.09, 0.08),
+            torso_rot_deg=(14.0, 0.0, -5.0),
+            head_rot_deg=(18.0, 0.0, 7.0),
+            arm_l_deg=(104.0, 0.0, -36.0),
+            forearm_l_deg=(92.0, 0.0, 20.0),
+            arm_r_deg=(104.0, 0.0, 36.0),
+            forearm_r_deg=(92.0, 0.0, -20.0),
+            interp="BACK",
+        )
+        self.key_pose(
+            f_settle,
+            torso_scale=(1.02, 1.02, 0.98),
+            pelvis_loc=(0.0, -0.06, 0.01),
+            torso_rot_deg=(8.0, 0.0, 4.0),
+            head_rot_deg=(12.0, 0.0, -5.0),
+            arm_l_deg=(86.0, 0.0, -30.0),
+            arm_r_deg=(86.0, 0.0, 30.0),
         )
         self.key_pose(
             f1,
-            pelvis_loc=(0.0, -0.05, 0.01),
-            torso_rot_deg=(8.0, 0.0, 3.0),
-            head_rot_deg=(11.0, 0.0, -4.0),
-            arm_l_deg=(82.0, 0.0, -28.0),
-            arm_r_deg=(82.0, 0.0, 28.0),
+            torso_scale=(1.0, 1.0, 1.0),
+            pelvis_loc=(0.0, -0.04, 0.02),
+            torso_rot_deg=(10.0, 0.0, -2.0),
+            head_rot_deg=(14.0, 0.0, 3.0),
+            arm_l_deg=(90.0, 0.0, -32.0),
+            arm_r_deg=(90.0, 0.0, 32.0),
         )
 
     def animate_point(
@@ -1749,40 +1926,56 @@ class StickmanActor:
         side: str = "R",
     ) -> None:
         self.key_face(f0, emotion)
+        f_snap = min(f1, f0 + 6)
         mid = (f0 + f1) // 2
         if side == "R":
             a_l, fa_l = (18.0, 0.0, -16.0), (38.0, 0.0, 8.0)
             a_r0, fa_r0 = (55.0, 0.0, 18.0), (42.0, 0.0, -10.0)
-            a_r1, fa_r1 = (92.0, 0.0, 12.0), (14.0, 0.0, -6.0)
+            a_r1, fa_r1 = (98.0, 0.0, 12.0), (14.0, 0.0, -6.0)
         else:
             a_r, fa_r = (18.0, 0.0, 16.0), (38.0, 0.0, -8.0)
             a_l0, fa_l0 = (55.0, 0.0, -18.0), (42.0, 0.0, 10.0)
-            a_l1, fa_l1 = (92.0, 0.0, -12.0), (14.0, 0.0, 6.0)
+            a_l1, fa_l1 = (98.0, 0.0, -12.0), (14.0, 0.0, 6.0)
 
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
+            torso_scale=(1.04, 1.04, 0.96),
+            pelvis_loc=(0.0, 0.0, -0.02),
             torso_rot_deg=(-4.0, 0.0, 6.0),
             head_rot_deg=(2.0, 0.0, -8.0),
             arm_l_deg=a_l if side == "R" else a_l0,
             forearm_l_deg=fa_l if side == "R" else fa_l0,
             arm_r_deg=a_r0 if side == "R" else a_r,
             forearm_r_deg=fa_r0 if side == "R" else fa_r,
+            interp="BACK",
         )
         self.key_pose(
-            mid,
-            torso_rot_deg=(-8.0, 0.0, -6.0),
-            head_rot_deg=(4.0, 4.0, 6.0),
+            f_snap,
+            torso_scale=(0.97, 0.97, 1.04),
+            pelvis_loc=(0.0, 0.0, 0.04),
+            torso_rot_deg=(-9.0, 0.0, -6.0),
+            head_rot_deg=(5.0, 4.0, 7.0),
             arm_l_deg=a_l if side == "R" else a_l1,
             forearm_l_deg=fa_l if side == "R" else fa_l1,
             arm_r_deg=a_r1 if side == "R" else a_r,
             forearm_r_deg=fa_r1 if side == "R" else fa_r,
+            interp="BACK",
+        )
+        self.key_pose(
+            mid,
+            torso_scale=(1.02, 1.02, 0.98),
+            pelvis_loc=(0.0, 0.0, 0.01),
+            torso_rot_deg=(-6.0, 0.0, -2.0),
+            head_rot_deg=(-2.0, -3.0, 4.0),
         )
         self.key_pose(
             f1,
-            torso_rot_deg=(-5.0, 0.0, -3.0),
-            head_rot_deg=(2.0, 2.0, 3.0),
+            torso_scale=(1.0, 1.0, 1.0),
+            pelvis_loc=(0.0, 0.0, 0.03),
+            torso_rot_deg=(-8.0, 0.0, -5.0),
+            head_rot_deg=(4.0, 2.0, 6.0),
         )
 
     def animate_masonry(
@@ -1887,30 +2080,32 @@ class StickmanActor:
         emotion: str = "DETERMINED",
     ) -> None:
         self.key_face(f0, emotion)
-        f_snap = min(f1, f0 + max(5, (f1 - f0) // 3))
+        f_snap = min(f1, f0 + 5)
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
-            torso_scale=(1.0, 1.0, 1.0),
-            pelvis_loc=(0.0, 0.0, 0.0),
+            torso_scale=(1.04, 1.04, 0.96),
+            pelvis_loc=(0.0, 0.0, -0.02),
             torso_rot_deg=(0.0, 0.0, 0.0),
             head_rot_deg=(0.0, 0.0, 0.0),
             arm_l_deg=(8.0, 0.0, -12.0),
             forearm_l_deg=(16.0, 0.0, 0.0),
             arm_r_deg=(35.0, 0.0, 12.0),
             forearm_r_deg=(45.0, 0.0, 0.0),
+            interp="BACK",
         )
         self.key_pose(
             f_snap,
-            torso_scale=(0.98, 0.98, 1.03),
-            pelvis_loc=(0.0, 0.0, 0.03),
-            torso_rot_deg=(4.0, 0.0, 0.0),
-            head_rot_deg=(6.0, 0.0, 0.0),
-            arm_r_deg=(118.0, 0.0, -14.0),
-            forearm_r_deg=(105.0, 0.0, -32.0),
+            torso_scale=(0.96, 0.96, 1.05),
+            pelvis_loc=(0.0, 0.0, 0.045),
+            torso_rot_deg=(5.0, 0.0, 0.0),
+            head_rot_deg=(7.0, 0.0, 0.0),
+            arm_r_deg=(122.0, 0.0, -14.0),
+            forearm_r_deg=(108.0, 0.0, -32.0),
+            interp="BACK",
         )
-        self.key_pose(f1, torso_scale=(1.0, 1.0, 1.0), pelvis_loc=(0.0, 0.0, 0.02))
+        self.key_pose(f1, torso_scale=(1.0, 1.0, 1.0), pelvis_loc=(0.0, 0.0, 0.02), head_rot_deg=(4.0, 0.0, 2.0))
 
     def animate_peer_periscope(
         self,
@@ -1921,11 +2116,13 @@ class StickmanActor:
         emotion: str = "SUSPICIOUS",
     ) -> None:
         self.key_face(f0, emotion)
+        atk = min(f1, f0 + 6)
         mid = (f0 + f1) // 2
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
+            torso_scale=(1.03, 1.03, 0.97),
             pelvis_loc=(0.0, 0.0, -0.02),
             torso_rot_deg=(-10.0, 0.0, -8.0),
             head_rot_deg=(-6.0, 0.0, -10.0),
@@ -1933,18 +2130,31 @@ class StickmanActor:
             forearm_l_deg=(62.0, 0.0, 26.0),
             arm_r_deg=(78.0, 0.0, 28.0),
             forearm_r_deg=(62.0, 0.0, -26.0),
+            interp="BACK",
+        )
+        self.key_pose(
+            atk,
+            torso_scale=(0.97, 0.97, 1.04),
+            root_yaw_deg=yaw_deg + 10.0,
+            pelvis_loc=(0.0, 0.0, 0.02),
+            torso_rot_deg=(-14.0, 0.0, 8.0),
+            head_rot_deg=(-9.0, 0.0, 10.0),
+            interp="BACK",
         )
         self.key_pose(
             mid,
-            root_yaw_deg=yaw_deg + 14.0,
-            torso_rot_deg=(-12.0, 0.0, 10.0),
-            head_rot_deg=(-8.0, 0.0, 12.0),
+            torso_scale=(1.02, 1.02, 0.98),
+            root_yaw_deg=yaw_deg - 10.0,
+            torso_rot_deg=(-8.0, 0.0, -10.0),
+            head_rot_deg=(-4.0, 0.0, -12.0),
         )
         self.key_pose(
             f1,
-            root_yaw_deg=yaw_deg - 10.0,
-            torso_rot_deg=(-10.0, 0.0, -6.0),
-            head_rot_deg=(-6.0, 0.0, -8.0),
+            torso_scale=(1.0, 1.0, 1.0),
+            root_yaw_deg=yaw_deg + 4.0,
+            pelvis_loc=(0.0, 0.0, 0.0),
+            torso_rot_deg=(-11.0, 0.0, 4.0),
+            head_rot_deg=(-6.0, 0.0, 6.0),
         )
 
     def animate_paint_stroke(
@@ -1957,32 +2167,45 @@ class StickmanActor:
     ) -> None:
         self.set_prop_visible("paintbrush", True)
         self.key_face(f0, emotion)
+        atk = min(f1, f0 + 6)
         mid = (f0 + f1) // 2
         self.key_pose(
             f0,
             root_loc=root_loc,
             root_yaw_deg=yaw_deg,
+            torso_scale=(1.04, 1.04, 0.96),
             torso_rot_deg=(-4.0, 0.0, -10.0),
             head_rot_deg=(4.0, 0.0, 8.0),
             arm_l_deg=(24.0, 0.0, -18.0),
             forearm_l_deg=(42.0, 0.0, 12.0),
             arm_r_deg=(88.0, 0.0, 24.0),
             forearm_r_deg=(38.0, 0.0, -18.0),
+            interp="BACK",
+        )
+        self.key_pose(
+            atk,
+            torso_scale=(0.96, 0.96, 1.05),
+            torso_rot_deg=(-9.0, 0.0, 14.0),
+            head_rot_deg=(7.0, 0.0, -12.0),
+            arm_r_deg=(118.0, 0.0, -20.0),
+            forearm_r_deg=(16.0, 0.0, 14.0),
+            interp="BACK",
         )
         self.key_pose(
             mid,
-            torso_scale=(0.98, 0.98, 1.03),
-            torso_rot_deg=(-8.0, 0.0, 12.0),
-            head_rot_deg=(6.0, 0.0, -10.0),
-            arm_r_deg=(116.0, 0.0, -18.0),
-            forearm_r_deg=(18.0, 0.0, 12.0),
+            torso_scale=(1.02, 1.02, 0.98),
+            torso_rot_deg=(-5.0, 0.0, -8.0),
+            head_rot_deg=(2.0, 0.0, 8.0),
+            arm_r_deg=(82.0, 0.0, 20.0),
+            forearm_r_deg=(42.0, 0.0, -14.0),
         )
         self.key_pose(
             f1,
             torso_scale=(1.0, 1.0, 1.0),
-            torso_rot_deg=(-4.0, 0.0, -6.0),
-            arm_r_deg=(78.0, 0.0, 18.0),
-            forearm_r_deg=(44.0, 0.0, -12.0),
+            torso_rot_deg=(-7.0, 0.0, 8.0),
+            head_rot_deg=(5.0, 0.0, -6.0),
+            arm_r_deg=(110.0, 0.0, -12.0),
+            forearm_r_deg=(22.0, 0.0, 10.0),
         )
 
 
@@ -2035,7 +2258,7 @@ def animate_camera(
     lens0: float = 45.0,
     lens1: float | None = None,
     fstop: float = 3.2,
-    use_dof: bool = True,
+    use_dof: bool = False,
 ) -> None:
     clear_object_anim(cam)
     clear_object_anim(cam.data)
@@ -2060,10 +2283,10 @@ def animate_camera(
         if owner.animation_data and owner.animation_data.action:
             for fc in owner.animation_data.action.fcurves:
                 for kp in fc.keyframe_points:
-                    kp.interpolation = "BEZIER"
+                    kp.interpolation = "LINEAR"
 
 
-# --------------------------------------------------------------------------- Iteration 3 Studio Helpers
+# --------------------------------------------------------------------------- Iteration 3-4 Studio Helpers
 def spawn_background_crew(
     name: str,
     placements: list[tuple[float, float, float, float, str, str, float]],
@@ -2072,7 +2295,7 @@ def spawn_background_crew(
     frame_end: int = 60,
 ) -> list[bpy.types.Object]:
     """Spawn lightweight animated miniature background stickmen (x, y, z, yaw_deg, torso_hex, cap_hex, scale)."""
-    m_head = make_toon_mat(f"{name}_CrewWhiteHead", "#F5F5F3", emission_lift=0.20, roughness=0.85)
+    m_head = make_cel_cutout_mat(f"{name}_CrewWhiteHead", "#FCFBF8", "#DFDDD6", cutoff=0.28)
     m_ink = make_toon_mat(f"{name}_CrewInk", "#161316", emission_lift=0.04, roughness=0.70)
     roots: list[bpy.types.Object] = []
     mid = max(2, frame_end // 2)

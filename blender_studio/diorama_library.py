@@ -182,14 +182,14 @@ def build_wwii_meadow_set(col: bpy.types.Collection, frame_end: int = 60) -> dic
         sun_disc_loc=(-5.8, -15.0, 9.2),
     )
 
-    m_grass = K.make_toon_mat("Meadow_Grass", "#6FA844", emission_lift=0.18, roughness=0.86)
-    m_grass_dk = K.make_toon_mat("Meadow_Hill", "#588C34", emission_lift=0.15, roughness=0.88)
-    m_road = K.make_toon_mat("Meadow_DirtRoad", "#B58E5E", emission_lift=0.14, roughness=0.90)
-    m_wood = K.make_toon_mat("Meadow_FenceWood", "#875D3A", emission_lift=0.12, roughness=0.82)
+    m_grass = K.make_pbr_mat("Meadow_Grass", "LeafyGrass", "#9EE066", uv_scale=6.0, roughness_bias=0.12, emission_lift=0.18)
+    m_grass_dk = K.make_pbr_mat("Meadow_Hill", "Grass", "#80BA54", uv_scale=5.0, roughness_bias=0.14, emission_lift=0.15)
+    m_road = K.make_pbr_mat("Meadow_DirtRoad", "Ground", "#DFB888", uv_scale=5.0, roughness_bias=0.18, emission_lift=0.16)
+    m_wood = K.make_pbr_mat("Meadow_FenceWood", "Wood", "#B88456", uv_scale=4.0, roughness_bias=0.12, emission_lift=0.14)
     m_trunk = K.make_toon_mat("Meadow_PineTrunk", "#5C3D26", emission_lift=0.10, roughness=0.88)
     m_pine = K.make_toon_mat("Meadow_PineLeaf", "#336B36", emission_lift=0.16, roughness=0.82)
-    m_pebble = K.make_toon_mat("Meadow_Pebble", "#9A8F80", emission_lift=0.12, roughness=0.80)
-    m_crate = K.make_toon_mat("Meadow_Crate", "#C99F61", emission_lift=0.18, roughness=0.72)
+    m_pebble = K.make_pbr_mat("Meadow_Pebble", "Cobblestone", "#BFB4A4", uv_scale=4.0, emission_lift=0.12)
+    m_crate = K.make_pbr_mat("Meadow_Crate", "WoodPlanks", "#DFB87E", uv_scale=3.0, emission_lift=0.16)
 
     # Sunlit rolling pasture floor + leading-line dirt road
     K.add_box("Meadow_Floor", (26.0, 26.0, 0.8), (0.0, -2.0, -0.40), m_grass, col, bevel=0.04)
@@ -269,10 +269,10 @@ def build_wwii_forest_sonic_set(col: bpy.types.Collection, frame_end: int = 60) 
         sun_disc_loc=(4.5, -14.0, 8.5),
     )
 
-    m_earth = K.make_toon_mat("Sonic_Earth", "#4C473C", emission_lift=0.14, roughness=0.90)
-    m_grass = K.make_toon_mat("Sonic_Moss", "#3B6238", emission_lift=0.14, roughness=0.86)
+    m_earth = K.make_pbr_mat("Sonic_Earth", "Ground", "#7D7466", uv_scale=5.0, emission_lift=0.14)
+    m_grass = K.make_pbr_mat("Sonic_Moss", "Grass", "#64945E", uv_scale=5.0, emission_lift=0.14)
     m_truck = K.make_toon_mat("Sonic_HalfTrack", "#53603D", emission_lift=0.22, roughness=0.65)
-    m_metal = K.make_toon_mat("Sonic_Steel", "#4A525E", emission_lift=0.15, roughness=0.38)
+    m_metal = K.make_pbr_mat("Sonic_Steel", "Metal", "#7B8798", uv_scale=3.0, emission_lift=0.14)
     m_horn = K.make_toon_mat("Sonic_HornBrass", "#D6A134", emission_lift=0.28, roughness=0.32)
     m_trunk = K.make_toon_mat("Sonic_Trunk", "#48301E", emission_lift=0.08)
     m_pine = K.make_toon_mat("Sonic_Pine", "#254C2E", emission_lift=0.12)
@@ -340,9 +340,9 @@ def build_wwii_warroom_set(col: bpy.types.Collection, frame_end: int = 60) -> di
         rim_energy=160.0,
     )
 
-    m_floor = K.make_toon_mat("War_FloorWood", "#5A402E", emission_lift=0.14, roughness=0.72)
-    m_wall = K.make_toon_mat("War_WallTimber", "#755840", emission_lift=0.18, roughness=0.78)
-    m_table = K.make_toon_mat("War_TableOak", "#493121", emission_lift=0.14, roughness=0.65)
+    m_floor = K.make_pbr_mat("War_FloorWood", "WoodPlanks", "#8B684E", uv_scale=4.0, emission_lift=0.14)
+    m_wall = K.make_pbr_mat("War_WallTimber", "Wood", "#9B7B5C", uv_scale=4.0, emission_lift=0.18)
+    m_table = K.make_pbr_mat("War_TableOak", "Wood", "#735036", uv_scale=3.0, emission_lift=0.14)
     m_sea = K.make_toon_mat("War_MapSea", "#457AA8", emission_lift=0.22, roughness=0.55)
     m_land = K.make_toon_mat("War_MapLand", "#C9B47C", emission_lift=0.20, roughness=0.72)
     m_pin_red = K.make_toon_mat("War_MarkerRed", "#D43F36", emission_lift=0.35, roughness=0.45)
@@ -459,9 +459,9 @@ def build_diagram_backdrop_set(col: bpy.types.Collection, frame_end: int = 60) -
         rim_energy=150.0,
     )
 
-    m_bench = K.make_toon_mat("Diag_OakBench", "#8A5E3B", emission_lift=0.16, roughness=0.68)
-    m_wall = K.make_toon_mat("Diag_WarmWall", "#46546A", emission_lift=0.22, roughness=0.85)
-    m_frame = K.make_toon_mat("Diag_FrameWood", "#4A3222", emission_lift=0.12, roughness=0.60)
+    m_bench = K.make_pbr_mat("Diag_OakBench", "WoodPlanks", "#BD8E60", uv_scale=3.5, emission_lift=0.16)
+    m_wall = K.make_pbr_mat("Diag_WarmWall", "Slate", "#6A7C96", uv_scale=2.5, emission_lift=0.20)
+    m_frame = K.make_pbr_mat("Diag_FrameWood", "Wood", "#735036", uv_scale=3.0, emission_lift=0.12)
     m_brass = K.make_toon_mat("Diag_BrassAcc", "#D8A842", emission_lift=0.24, roughness=0.35)
     m_red = K.make_toon_mat("Diag_FolderRed", "#B54132", emission_lift=0.20, roughness=0.65)
     m_paper = K.make_toon_mat("Diag_DefaultPaper", "#F0E5CC", emission_lift=0.25, roughness=0.60)
@@ -505,7 +505,7 @@ def _build_dazzle_warship(
     m_wht = K.make_toon_mat(f"{name}_DazzleWht", "#EFEFE9", emission_lift=0.22, roughness=0.68)
     m_cyn = K.make_toon_mat(f"{name}_DazzleCyn", "#2AA2C8", emission_lift=0.22, roughness=0.65)
     m_cor = K.make_toon_mat(f"{name}_DazzleCor", "#D45E45", emission_lift=0.22, roughness=0.65)
-    m_deck = K.make_toon_mat(f"{name}_ShipDeck", "#98744E", emission_lift=0.14, roughness=0.78)
+    m_deck = K.make_pbr_mat(f"{name}_ShipDeck", "WoodPlanks", "#D0A676", uv_scale=3.5, emission_lift=0.14)
     m_redhull = K.make_toon_mat(f"{name}_LowerHull", "#822A22", emission_lift=0.14, roughness=0.72)
 
     parts: list[bpy.types.Object] = [
@@ -514,6 +514,10 @@ def _build_dazzle_warship(
         K.add_box(f"{name}_BowProw", (1.2, 0.72, 0.72), (2.75, 0.0, 0.58), m_blk, col, bevel=0.08, rot_deg=(0.0, -14.0, 0.0), outline=0.024),
         K.add_box(f"{name}_WoodDeck", (5.2, 1.14, 0.06), (0.0, 0.0, 0.89), m_deck, col, bevel=0.01),
     ]
+
+    # Stylized ship mast & crow's nest lookout
+    parts.append(K.add_cylinder(f"{name}_MastMain", 0.048, 1.65, (0.25, 0.0, 2.05), m_blk, col, outline=0.014))
+    parts.append(K.add_box(f"{name}_MastYard", (0.04, 0.72, 0.04), (0.25, 0.0, 2.48), m_blk, col, outline=0.010))
 
     # Geometric angled Dazzle zebra stripes along both port (+Y) and starboard (-Y) sides
     stripe_mats = (m_blk, m_cyn, m_blk, m_cor, m_wht, m_blk, m_cyn, m_blk)
@@ -552,15 +556,26 @@ def build_wwi_shipyard_set(col: bpy.types.Collection, frame_end: int = 60) -> di
         sun_disc_loc=(-5.5, -15.0, 9.0),
     )
 
-    m_pier = K.make_toon_mat("Dock_WoodPier", "#8E643E", emission_lift=0.14, roughness=0.78)
-    m_stone = K.make_toon_mat("Dock_BrickQuay", "#A44C3B", emission_lift=0.15, roughness=0.82)
-    m_water = K.make_toon_mat("Dock_HarborSea", "#296998", emission_lift=0.16, roughness=0.45)
-    m_crane = K.make_toon_mat("Dock_CraneYellow", "#D89E2B", emission_lift=0.18, roughness=0.58)
-    m_scaf = K.make_toon_mat("Dock_Scaffold", "#6E4D30", emission_lift=0.12)
+    m_pier = K.make_pbr_mat("Dock_WoodPier", "WoodPlanks", "#C89864", uv_scale=4.5, emission_lift=0.14)
+    m_stone = K.make_pbr_mat("Dock_BrickQuay", "Brick", "#D06C58", uv_scale=3.2, emission_lift=0.15)
+    m_roof = K.make_pbr_mat("Dock_SlateRoof", "Slate", "#546272", uv_scale=3.0, emission_lift=0.12)
+    m_win = K.make_toon_mat("Dock_GlassWin", "#243B4E", emission_lift=0.18, roughness=0.25)
+    m_water = K.make_toon_mat("Dock_HarborSea", "#296998", emission_lift=0.16, roughness=0.22)
+    m_crane = K.make_pbr_mat("Dock_CraneYellow", "Metal", "#F0B83C", uv_scale=2.5, emission_lift=0.16)
+    m_scaf = K.make_pbr_mat("Dock_Scaffold", "Wood", "#986F46", uv_scale=3.0, emission_lift=0.12)
+    m_crate = K.make_pbr_mat("Dock_CargoCrate", "WoodPlanks", "#D9AF76", uv_scale=2.5, emission_lift=0.14)
 
     K.add_box("Dock_SeaFloor", (28.0, 22.0, 0.4), (0.0, -5.0, -0.30), m_water, col)
     K.add_box("Dock_PierDeck", (24.0, 7.0, 0.6), (0.0, 2.2, -0.30), m_pier, col, bevel=0.03)
     K.add_box("Dock_BrickBuilding", (12.0, 3.2, 4.4), (-6.5, -6.5, 2.0), m_stone, col, bevel=0.04, outline=0.022)
+    K.add_box("Dock_BrickRoof", (12.4, 3.5, 0.28), (-6.5, -6.5, 4.28), m_roof, col, bevel=0.02, outline=0.018)
+    for wx in (-9.0, -6.4, -3.8):
+        K.add_box(f"Dock_Win_{wx}", (1.15, 0.14, 1.15), (wx, -4.88, 2.65), m_win, col, bevel=0.02, outline=0.016)
+    # Harbor bollards & cargo crates on wharf flanks
+    for bx in (-2.9, 2.85):
+        K.add_cylinder(f"Dock_Bollard_{bx}", 0.14, 0.42, (bx, -0.95, 0.21), m_roof, col, outline=0.016)
+    K.add_box("Dock_CrateStack1", (0.72, 0.72, 0.56), (-2.65, 0.40, 0.28), m_crate, col, bevel=0.02, outline=0.016)
+    K.add_box("Dock_CrateStack2", (0.58, 0.58, 0.48), (2.65, 0.35, 0.24), m_crate, col, bevel=0.02, outline=0.016)
     K.add_box("Dock_CranePost", (0.45, 0.45, 4.2), (3.8, -1.8, 2.0), m_crane, col, bevel=0.02, outline=0.018)
     K.add_box("Dock_CraneBoom", (3.6, 0.34, 0.34), (2.3, -1.8, 3.8), m_crane, col, bevel=0.02, rot_deg=(0.0, -14.0, 0.0), outline=0.018)
 
@@ -605,8 +620,8 @@ def build_wwi_ocean_dazzle_set(col: bpy.types.Collection, frame_end: int = 60) -
         sun_disc_loc=(-5.2, -16.0, 8.8),
     )
 
-    m_sea1 = K.make_toon_mat("Ocean_Blue1", "#256496", emission_lift=0.16, roughness=0.45)
-    m_sea2 = K.make_toon_mat("Ocean_Blue2", "#2F78AD", emission_lift=0.18, roughness=0.45)
+    m_sea1 = K.make_toon_mat("Ocean_Blue1", "#256496", emission_lift=0.16, roughness=0.22)
+    m_sea2 = K.make_toon_mat("Ocean_Blue2", "#2F78AD", emission_lift=0.18, roughness=0.20)
     m_foam = K.make_toon_mat("Ocean_Foam", "#EAF4FA", emission_lift=0.22, roughness=0.70)
 
     K.add_box("Ocean_Base", (36.0, 32.0, 0.6), (0.0, -4.0, -0.30), m_sea1, col)
@@ -645,14 +660,19 @@ def build_wwi_uboat_interior_set(col: bpy.types.Collection, frame_end: int = 60)
         rim_energy=165.0,
     )
 
-    m_hull = K.make_toon_mat("Sub_HullSteel", "#31495A", emission_lift=0.16, roughness=0.58)
-    m_floor = K.make_toon_mat("Sub_DeckPlate", "#23303B", emission_lift=0.12, roughness=0.52)
-    m_brass = K.make_toon_mat("Sub_Brass", "#D6A238", emission_lift=0.22, roughness=0.35)
-    m_chrome = K.make_toon_mat("Sub_Chrome", "#A6B6C4", emission_lift=0.20, roughness=0.28)
-    m_dial = K.make_toon_mat("Sub_DialGlow", "#BCEAF2", emission_lift=0.55)
+    m_hull = K.make_pbr_mat("Sub_HullSteel", "Metal", "#567A92", uv_scale=3.0, emission_lift=0.18)
+    m_floor = K.make_pbr_mat("Sub_DeckPlate", "Slate", "#435564", uv_scale=3.5, emission_lift=0.14)
+    m_brass = K.make_pbr_mat("Sub_Brass", "Metal", "#F0BE4A", uv_scale=2.0, emission_lift=0.22)
+    m_chrome = K.make_pbr_mat("Sub_Chrome", "Metal", "#C6D6E4", uv_scale=2.0, emission_lift=0.22)
+    m_pipe = K.make_toon_mat("Sub_CopperPipe", "#B8663C", emission_lift=0.18, roughness=0.40)
+    m_dial = K.make_toon_mat("Sub_DialGlow", "#BCEAF2", emission_lift=0.60)
 
     K.add_box("Sub_Floor", (10.0, 8.0, 0.4), (0.0, 0.0, -0.20), m_floor, col)
     K.add_box("Sub_BackBulkhead", (10.0, 0.5, 5.4), (0.0, -2.6, 2.6), m_hull, col)
+    # Overhead steel submarine pipework & red hatch wheel
+    for pz in (2.55, 2.90):
+        K.add_cylinder(f"Sub_Pipe_{pz}", 0.075, 8.5, (0.0, -2.28, pz), m_pipe, col, rot_deg=(0.0, 90.0, 0.0), outline=0.012)
+    K.add_torus("Sub_ValveWheel", 0.30, 0.036, (-1.85, -2.24, 1.55), K.make_toon_mat("Sub_ValveRed", "#C84036", 0.20), col, rot_deg=(90.0, 0.0, 0.0), outline=0.014)
     K.add_box("Sub_Console", (1.6, 0.8, 1.15), (1.35, -1.65, 0.58), m_floor, col, bevel=0.04, outline=0.020)
     for gx in (0.95, 1.35, 1.75):
         K.add_cylinder(f"Sub_Gauge_{gx}", 0.15, 0.06, (gx, -1.24, 1.05), m_brass, col, rot_deg=(90.0, 0.0, 0.0), outline=0.012)
@@ -682,8 +702,8 @@ def build_wwi_periscope_view_set(col: bpy.types.Collection, frame_end: int = 60)
         sun_disc_loc=(-5.0, -16.0, 8.8),
     )
 
-    m_sea = K.make_toon_mat("Scope_Sea", "#235B8C", emission_lift=0.16, roughness=0.45)
-    m_wave = K.make_toon_mat("Scope_Wave", "#2D74A8", emission_lift=0.18, roughness=0.45)
+    m_sea = K.make_toon_mat("Scope_Sea", "#235B8C", emission_lift=0.16, roughness=0.22)
+    m_wave = K.make_toon_mat("Scope_Wave", "#2D74A8", emission_lift=0.18, roughness=0.20)
     m_foam = K.make_toon_mat("Scope_Foam", "#F4FAFF", emission_lift=0.40, roughness=0.70)
     m_torp = K.make_toon_mat("Scope_TorpedoSteel", "#2C3540", emission_lift=0.10, roughness=0.35)
     m_brass = K.make_toon_mat("Scope_TorpedoNose", "#E4B238", emission_lift=0.22, roughness=0.32)

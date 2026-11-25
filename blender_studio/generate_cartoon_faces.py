@@ -39,6 +39,10 @@ EMOTIONS = [
     "DETERMINED",
     "SLEEPY",
     "CONFUSED",
+    "TALK_OPEN",
+    "TALK_SERIOUS",
+    "TALK_ANGRY",
+    "BLINK",
 ]
 
 EYE_L = 710
@@ -230,8 +234,12 @@ def render_face(emotion: str) -> Image.Image:
             d.line([(tx, 1306), (tx, 1454)], fill=INK, width=16)
 
     elif emotion == "FURIOUS":
-        _draw_oval_eye(d, EYE_L, w=165, h=205)
-        _draw_oval_eye(d, EYE_R, w=165, h=205)
+        # Glowing crimson-red eyes matching @RicksClips3000 rage gag
+        for cx in (EYE_L, EYE_R):
+            d.ellipse([cx - 125, EYE_Y - 125, cx + 125, EYE_Y + 125], fill=(240, 38, 52, 115))
+            d.ellipse([cx - 95, EYE_Y - 102, cx + 95, EYE_Y + 102], fill=(240, 38, 52, 255), outline=INK, width=28)
+            d.ellipse([cx - 56, EYE_Y - 62, cx + 56, EYE_Y + 62], fill=(255, 98, 52, 255))
+            d.ellipse([cx - 26, EYE_Y - 28, cx + 26, EYE_Y + 28], fill=(255, 245, 195, 255))
         _draw_brows(d, "angry")
         vx, vy = 1615, 570
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
@@ -288,12 +296,36 @@ def render_face(emotion: str) -> Image.Image:
         for rad, sa, ea in ((92, 20, 290), (54, 60, 330)):
             d.arc([sx - rad, sy - rad, sx + rad, sy + rad], start=sa, end=ea, fill=INK, width=22)
 
+    elif emotion == "TALK_OPEN":
+        _draw_oval_eye(d, EYE_L)
+        _draw_oval_eye(d, EYE_R)
+        _draw_brows(d, "happy")
+        _draw_open_oval_mouth(d, MOUTH_X, MOUTH_Y + 22, w=320, h=235)
+
+    elif emotion == "TALK_SERIOUS":
+        _draw_oval_eye(d, EYE_L, w=175, h=230)
+        _draw_oval_eye(d, EYE_R, w=175, h=230)
+        _draw_brows(d, "calm")
+        _draw_open_oval_mouth(d, MOUTH_X, MOUTH_Y + 20, w=295, h=200)
+
+    elif emotion == "TALK_ANGRY":
+        _draw_oval_eye(d, EYE_L, w=175, h=225)
+        _draw_oval_eye(d, EYE_R, w=175, h=225)
+        _draw_brows(d, "angry")
+        _draw_open_oval_mouth(d, MOUTH_X, MOUTH_Y + 25, w=390, h=260)
+
+    elif emotion == "BLINK":
+        for cx in (EYE_L, EYE_R):
+            d.arc([cx - 125, EYE_Y - 20, cx + 125, EYE_Y + 110], start=15, end=165, fill=INK, width=42)
+        _draw_brows(d, "calm")
+        d.arc([MOUTH_X - 175, MOUTH_Y - 120, MOUTH_X + 175, MOUTH_Y + 55], start=14, end=166, fill=INK, width=36)
+
     return im.resize((1024, 1024), Image.Resampling.LANCZOS)
 
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    cols, rows, cell = 4, 4, 1024
+    cols, rows, cell = 4, 5, 1024
     atlas = Image.new("RGBA", (cols * cell, rows * cell), (0, 0, 0, 0))
     atlas_map: dict[str, list[int]] = {}
 

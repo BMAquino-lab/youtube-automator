@@ -67,6 +67,27 @@
         "v3_background_crew_3d_callouts_naval"
       ],
       "recorded_at": "2026-11-24T11:57:30.749632+00:00"
+    },
+    {
+      "iteration": 4,
+      "episode_id": "ep06_dazzle_warships_v4",
+      "title": "Why The Navy Painted Warships Like Bright Zebras (v4 24fps HD)",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 44,
+      "unique_clips": 40,
+      "approx_render_wall_min": 43.34,
+      "duration_s": 69.1,
+      "wpm": 210,
+      "word_recall_pct": 95,
+      "hook_luma": 134,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "elevenlabs_liam",
+      "upgrades_applied": [
+        "v4_ricksclips_cinema_24fps_pbr_lipflap"
+      ],
+      "recorded_at": "2026-11-25T04:22:41.291018+00:00"
     }
   ],
   "next_iteration_upgrades": [
@@ -81,6 +102,12 @@
       "title": "Background Crowd Actors, Pulsing 3D Callout Arrows & Optical Reticle Rig",
       "details": "Add spawn_background_crew for lively busy scenes, pulsing 3D directional arrows for proof beats, coincidence rangefinder reticle rig, and sunlit rolling ocean / drydock / submarine sets",
       "status": "done (iter 3)"
+    },
+    {
+      "id": "v4_ricksclips_cinema_24fps_pbr_lipflap",
+      "title": "Native 24fps HD, Pure Paper-White Cel Cutout Shader, Lip-Flap/Blinks & PBR Dioramas",
+      "details": "Upgrade pipeline to 720x1280 @ 24fps (8 samples, 3 parallel workers, zero shadow jitter), zero-noise ShaderToRGB cel cutout head shader (#FCFBF8), BLENDED emission 4x5 face atlas with 4-frame talking lip-flap + natural blinks + glowing red FURIOUS eyes, BACK-eased overshoot gestures, linear camera motion, and real WoodPlanks/Brick/Metal/Slate PBR textures",
+      "status": "done (iter 4)"
     },
     {
       "id": "v4_beveled_prop_shadows_rim_dof",
