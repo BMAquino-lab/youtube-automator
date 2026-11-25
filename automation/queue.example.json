@@ -36,17 +36,21 @@
       "master_mp4": "outputs/ep06_dazzle_warships/master.mp4",
       "qa_report_json": "outputs/ep06_dazzle_warships/qa_report.json",
       "contact_sheet_jpg": "outputs/ep06_dazzle_warships/contact_sheet.jpg",
-      "status": "ready",
+      "status": "published",
       "iteration": 4
+    },
+    {
+      "episode_id": "ep07_deadliest_paper_map",
+      "title": "Why Cartographers Drew A Fake Town On Purpose",
+      "description": "In the 1930s, General Drafting cartographers Otto G. Lindberg and Ernest Alpers invented a fake Catskills hamlet named Agloe from their scrambled initials to catch map copycats \u2014 until travelers saw Agloe on an Esso road map and built the real Agloe General Store there in 1950. #shorts #history #maps #fivestack",
+      "master_mp4": "outputs/ep07_deadliest_paper_map/master.mp4",
+      "qa_report_json": "outputs/ep07_deadliest_paper_map/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep07_deadliest_paper_map/contact_sheet.jpg",
+      "status": "ready",
+      "iteration": 5
     }
   ],
   "topic_backlog": [
-    {
-      "slug": "ep07_deadliest_paper_map",
-      "title_idea": "Why Cartographers Drew A Fake Town On Purpose",
-      "hook_object": "paper town",
-      "summary": "Mapmakers invented fictional copyright trap towns like Agloe, New York to catch rival publishers copying their maps until travelers built a real store there."
-    },
     {
       "slug": "ep08_concrete_ships_ww2",
       "title_idea": "Why The Navy Built Cargo Ships Out Of Concrete",
@@ -76,6 +80,12 @@
       "title_idea": "Why Engineers Mixed Sawdust Into Ship Ice",
       "hook_object": "sawdust ice",
       "summary": "Project Habakkuk blended 14% wood pulp into water ice to create pykrete stronger than unarmored steel so a gunshot ricocheted off an ice block in front of admirals."
+    },
+    {
+      "slug": "ep13_upside_down_bank_bricks",
+      "title_idea": "Why A Banker Mailed 40,000 Bricks Through The Post",
+      "hook_object": "mailed bricks",
+      "summary": "William Coltharp shipped a bank's entire brick facade as parcel post crates across Utah mountains because 1916 USPS postage cost a fraction of wagon freight."
     }
   ]
 }
