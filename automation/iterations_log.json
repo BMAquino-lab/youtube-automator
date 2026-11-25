@@ -109,6 +109,27 @@
         "v4_beveled_prop_shadows_rim_dof"
       ],
       "recorded_at": "2026-11-25T13:31:09.939077+00:00"
+    },
+    {
+      "iteration": 6,
+      "episode_id": "ep08_concrete_ships_ww2",
+      "title": "Why The Navy Built Cargo Ships Out Of Concrete",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 40,
+      "unique_clips": 39,
+      "approx_render_wall_min": 26.8,
+      "duration_s": 68.2,
+      "wpm": 197,
+      "word_recall_pct": 87,
+      "hook_luma": 153,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "edge_tts",
+      "upgrades_applied": [
+        "v5_motion_fx_streaks_dust_sparks"
+      ],
+      "recorded_at": "2026-11-25T22:47:23.917455+00:00"
     }
   ],
   "next_iteration_upgrades": [
@@ -140,7 +161,7 @@
       "id": "v5_motion_fx_streaks_dust_sparks",
       "title": "Stylized Action Speed Lines, Sweating Drops & Steam Puffs",
       "details": "Attach animated 3D comic sweat-drop beads on NERVOUS_SWEAT, drifting steam puffs on FURIOUS, and radial burst streaks on SHOCK reactions",
-      "status": "pending"
+      "status": "done (iter 6)"
     },
     {
       "id": "v6_multi_prop_hand_swaps",

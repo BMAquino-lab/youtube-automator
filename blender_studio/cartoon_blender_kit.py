@@ -1013,6 +1013,7 @@ class StickmanActor:
             "crew": "#D9D2C4",          # rolled wool dock/sailor sweater
             "cartographer": "#2C5978",  # Prussian-blue 1930s drafting smock / vest
             "storekeeper": "#9E462C",   # warm rust-brown Catskills country vest
+            "naval_engineer": "#2B5B84", # slate-blue WWII naval shipyard engineer jacket
         }
         t_hex = torso_hex or default_colors.get(preset, "#2B7A78")
 
@@ -1087,6 +1088,7 @@ class StickmanActor:
         head_accs: list[bpy.types.Object] = []
         torso_accs: list[bpy.types.Object] = []
         self._build_costume(preset, head_accs, torso_accs)
+        self._build_motion_fx(col)
 
         # 6) Clean zero-cycle Armature
         arm_data = bpy.data.armatures.new(f"{name}_ArmData")
@@ -1141,11 +1143,13 @@ class StickmanActor:
             bindings.append((o, "Head"))
         for o in torso_accs:
             bindings.append((o, "Torso"))
+        bindings.append((self.fx_head_root, "Head"))
+        bindings.append((self.fx_torso_root, "Torso"))
         for p_name, p_obj in self.props.items():
             b = "Forearm.R" if p_name in ("whistle_hand", "turning_bar", "trowel", "binoculars", "pointer_stick", "paintbrush", "telescope", "magnifying_glass") else "Forearm.L"
             bindings.append((p_obj, b))
 
-        self.all_objs = [self.rig] + [o for o, _ in bindings]
+        self.all_objs = [self.rig] + [o for o, _ in bindings] + self._all_fx_objs()
         for child, bname in bindings:
             mw = child.matrix_world.copy()
             child.parent = self.rig
@@ -1155,9 +1159,12 @@ class StickmanActor:
             link_to_collection(child, col)
 
         link_to_collection(self.rig, col)
-        # Hide optional held hand props by default; scenes turn them on when needed
+        # Hide optional held hand props & v5 comic FX by default; scenes turn them on when needed
         for pname in self.props:
             self.set_prop_visible(pname, False)
+        for fx_obj in self._all_fx_objs():
+            fx_obj.hide_render = True
+            fx_obj.hide_viewport = True
 
     def _build_costume(
         self,
@@ -1564,6 +1571,70 @@ class StickmanActor:
             add_ink_outline(rmap, 0.016)
             self.props["rolled_map"] = rmap
 
+        elif preset == "naval_engineer":
+            # Hard hat + safety goggles rim + white shirt collar + rolled blueprint + mason trowel
+            m_helm = make_toon_mat(f"{self.name}_HardHat", "#E8B838", 0.22, roughness=0.45)
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=22, ring_count=12, radius=0.55, location=(0.0, -0.02, 2.38))
+            dome = bpy.context.active_object
+            dome.scale = (1.03, 1.08, 0.56)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(dome, m_helm, 0.022, head_accs)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.58, depth=0.04, location=(0.0, 0.06, 2.34))
+            brim = bpy.context.active_object
+            brim.scale = (1.0, 1.08, 1.0)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(brim, m_helm, 0.016, head_accs)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, -0.02, 2.66))
+            ridge = bpy.context.active_object
+            ridge.scale = (0.14, 0.72, 0.10)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(ridge, m_gold, 0.012, head_accs)
+
+            # Tie + white collar
+            for bx in (-0.08, 0.08):
+                bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx, 0.25, 1.54))
+                col_wing = bpy.context.active_object
+                col_wing.scale = (0.14, 0.12, 0.11)
+                col_wing.rotation_euler = (math.radians(15), 0.0, math.radians(-22 if bx > 0 else 22))
+                bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+                _finish(col_wing, m_white_col, 0.015, torso_accs)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.32, 1.24))
+            tie = bpy.context.active_object
+            tie.scale = (0.11, 0.05, 0.44)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(tie, make_toon_mat(f"{self.name}_EngTie", "#B8362B", 0.18), 0.012, torso_accs)
+
+            # Rolled blueprint (Forearm.L) & mason trowel (Forearm.R)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.068, depth=0.62, location=(-0.54, 0.16, 0.84))
+            bp = bpy.context.active_object
+            bp.name = f"{self.name}_PropBlueprint"
+            bp.rotation_euler = (math.radians(78.0), math.radians(18.0), 0.0)
+            _smooth_mesh(bp)
+            bp.data.materials.append(make_toon_mat(f"{self.name}_BlueprintBlue", "#2868B8", 0.16))
+            add_ink_outline(bp, 0.018)
+            self.props["blueprint"] = bp
+
+            m_iron = make_toon_mat(f"{self.name}_EngIron", "#4A525D", 0.10, roughness=0.38)
+            bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.14, radius2=0.01, depth=0.34, location=(0.54, 0.32, 0.84))
+            blade = bpy.context.active_object
+            blade.scale = (1.0, 0.15, 1.0)
+            blade.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.028, depth=0.18, location=(0.54, 0.10, 0.84))
+            handle = bpy.context.active_object
+            handle.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+            for o in bpy.context.selected_objects:
+                o.select_set(False)
+            blade.select_set(True)
+            handle.select_set(True)
+            bpy.context.view_layer.objects.active = blade
+            bpy.ops.object.join()
+            trowel = bpy.context.active_object
+            trowel.name = f"{self.name}_PropTrowel"
+            trowel.data.materials.append(m_iron)
+            add_ink_outline(trowel, 0.015)
+            self.props["trowel"] = trowel
+
         if "pointer_stick" not in self.props:
             bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.022, depth=0.95, location=(0.54, 0.38, 0.86))
             ptr = bpy.context.active_object
@@ -1574,6 +1645,115 @@ class StickmanActor:
             add_ink_outline(ptr, 0.012)
             self.props["pointer_stick"] = ptr
 
+    def _build_motion_fx(self, col: bpy.types.Collection | None) -> None:
+        """Build v5 comic motion FX meshes: sweat drops, steam puffs, shock burst streaks & speed lines."""
+        self.fx_head_root = bpy.data.objects.new(f"{self.name}_FXHeadRoot", None)
+        self.fx_head_root.empty_display_type = "PLAIN_AXES"
+        self.fx_head_root.empty_display_size = 0.12
+        self.fx_head_root.location = (0.0, 0.0, 2.04)
+        link_to_collection(self.fx_head_root, col)
+
+        self.fx_torso_root = bpy.data.objects.new(f"{self.name}_FXTorsoRoot", None)
+        self.fx_torso_root.empty_display_type = "PLAIN_AXES"
+        self.fx_torso_root.empty_display_size = 0.12
+        self.fx_torso_root.location = (0.0, 0.0, 1.20)
+        link_to_collection(self.fx_torso_root, col)
+
+        self.fx_groups: dict[str, list[bpy.types.Object]] = {
+            "sweat": [],
+            "steam": [],
+            "shock": [],
+            "speed": [],
+        }
+        self.fx_base: dict[str, tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]] = {}
+
+        def _reg_fx(group: str, obj: bpy.types.Object, parent: bpy.types.Object, local_loc: tuple[float, float, float]) -> None:
+            if hasattr(obj, "visible_shadow"):
+                obj.visible_shadow = False
+            obj.parent = parent
+            obj.location = local_loc
+            link_to_collection(obj, col)
+            self.fx_groups[group].append(obj)
+            self.fx_base[obj.name] = (
+                tuple(obj.location),
+                tuple(obj.rotation_euler),
+                tuple(obj.scale),
+            )
+
+        # 1) Comic sweat-drop beads (NERVOUS_SWEAT)
+        m_sweat = make_toon_mat(f"{self.name}_FXSweat", "#68D8FF", emission_lift=0.45, roughness=0.28)
+        sweat_specs = (
+            ((-0.62, 0.14, 0.24), (0.070, 0.050, 0.115), (0.0, -14.0, 0.0)),
+            ((0.64, 0.12, 0.18), (0.065, 0.048, 0.105), (0.0, 14.0, 0.0)),
+            ((-0.68, 0.06, -0.04), (0.056, 0.042, 0.090), (0.0, -10.0, 0.0)),
+        )
+        for idx, (loc, sc, rot_d) in enumerate(sweat_specs):
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=1.0, location=(0.0, 0.0, 0.0))
+            drop = bpy.context.active_object
+            drop.name = f"{self.name}_FXSweat{idx}"
+            drop.scale = sc
+            drop.rotation_euler = tuple(math.radians(a) for a in rot_d)
+            _smooth_mesh(drop)
+            drop.data.materials.append(m_sweat)
+            add_ink_outline(drop, thickness=0.013)
+            _reg_fx("sweat", drop, self.fx_head_root, loc)
+
+        # 2) Drifting comic steam puffs (FURIOUS)
+        m_steam = make_toon_mat(f"{self.name}_FXSteam", "#F7E4FF", emission_lift=0.48, roughness=0.72)
+        steam_specs = (
+            ((-0.64, 0.02, 0.34), (0.13, 0.10, 0.10)),
+            ((0.64, 0.02, 0.36), (0.13, 0.10, 0.10)),
+            ((-0.78, -0.04, 0.56), (0.17, 0.12, 0.12)),
+            ((0.78, -0.04, 0.58), (0.17, 0.12, 0.12)),
+        )
+        for idx, (loc, sc) in enumerate(steam_specs):
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=1.0, location=(0.0, 0.0, 0.0))
+            puff = bpy.context.active_object
+            puff.name = f"{self.name}_FXSteam{idx}"
+            puff.scale = sc
+            _smooth_mesh(puff)
+            puff.data.materials.append(m_steam)
+            add_ink_outline(puff, thickness=0.014)
+            _reg_fx("steam", puff, self.fx_head_root, loc)
+
+        # 3) Radial comic burst streaks (SHOCK / SCREAM) - flare outward cleanly past hats
+        m_shock = make_toon_mat(f"{self.name}_FXShock", "#FFE44A", emission_lift=0.68, roughness=0.40)
+        shock_angles = (-108.0, -72.0, -38.0, 38.0, 72.0, 108.0)
+        for idx, ang_deg in enumerate(shock_angles):
+            ang = math.radians(ang_deg)
+            rad = 1.02 if idx % 2 == 0 else 1.10
+            lx = math.sin(ang) * rad
+            lz = math.cos(ang) * rad
+            bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.010, radius2=0.052, depth=0.34, location=(0.0, 0.0, 0.0))
+            spk = bpy.context.active_object
+            spk.name = f"{self.name}_FXShock{idx}"
+            spk.rotation_euler = (0.0, ang, 0.0)
+            _smooth_mesh(spk)
+            spk.data.materials.append(m_shock)
+            add_ink_outline(spk, thickness=0.012)
+            _reg_fx("shock", spk, self.fx_head_root, (lx, 0.02, lz))
+
+        # 4) Stylized action speed lines (high-energy reactions / rushes)
+        m_speed = make_toon_mat(f"{self.name}_FXSpeed", "#F2FAFF", emission_lift=0.60, roughness=0.40)
+        speed_specs = (
+            ((-0.76, -0.32, 0.42), (0.016, 0.56, 0.016)),
+            ((0.76, -0.32, 0.38), (0.016, 0.56, 0.016)),
+            ((-0.86, -0.36, 0.04), (0.014, 0.48, 0.014)),
+            ((0.86, -0.36, 0.08), (0.014, 0.48, 0.014)),
+        )
+        for idx, (loc, sc) in enumerate(speed_specs):
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.0, 0.0))
+            ln = bpy.context.active_object
+            ln.name = f"{self.name}_FXSpeed{idx}"
+            ln.scale = sc
+            _smooth_mesh(ln)
+            ln.data.materials.append(m_speed)
+            add_ink_outline(ln, thickness=0.010)
+            _reg_fx("speed", ln, self.fx_torso_root, loc)
+
+    def _all_fx_objs(self) -> list[bpy.types.Object]:
+        return [o for grp in self.fx_groups.values() for o in grp]
+
     def set_visible(self, visible: bool) -> None:
         for o in self.all_objs:
             o.hide_render = not visible
@@ -1581,6 +1761,9 @@ class StickmanActor:
         if visible:
             for pname in self.props:
                 self.set_prop_visible(pname, False)
+            for fx_obj in self._all_fx_objs():
+                fx_obj.hide_render = True
+                fx_obj.hide_viewport = True
 
     def set_prop_visible(self, prop_name: str, visible: bool) -> None:
         obj = self.props.get(prop_name)
@@ -1590,6 +1773,14 @@ class StickmanActor:
 
     def reset_animation(self) -> None:
         clear_object_anim(self.rig)
+        for fx_obj in self._all_fx_objs():
+            clear_object_anim(fx_obj)
+            b_loc, b_rot, b_sc = self.fx_base[fx_obj.name]
+            fx_obj.location = b_loc
+            fx_obj.rotation_euler = b_rot
+            fx_obj.scale = b_sc
+            fx_obj.hide_render = True
+            fx_obj.hide_viewport = True
         if self.face_obj.data.materials:
             clear_object_anim(self.face_obj.data.materials[0].node_tree)
         if hasattr(self, "head_mat") and self.head_mat and self.head_mat.node_tree:
@@ -1691,6 +1882,114 @@ class StickmanActor:
                 self.key_face(f, talk_em if open_mouth else cur_base)
                 open_mouth = not open_mouth
             f += 4
+
+    def animate_emotion_fx(
+        self,
+        f0: int,
+        f1: int,
+        base_emotion: str,
+        *,
+        mid_emotion: str | None = None,
+        mid_frame: int | None = None,
+        speed_lines: bool = False,
+    ) -> None:
+        """Animate v5 3D comic FX: sweat drops (NERVOUS_SWEAT), steam puffs (FURIOUS), shock bursts (SHOCK/SCREAM), and speed lines."""
+        def _emo_group(em: str | None) -> str | None:
+            if em == "NERVOUS_SWEAT":
+                return "sweat"
+            if em == "FURIOUS":
+                return "steam"
+            if em in ("SHOCK", "SCREAM"):
+                return "shock"
+            return None
+
+        g0 = _emo_group(base_emotion)
+        g1 = _emo_group(mid_emotion) if (mid_emotion and mid_frame is not None and f0 < mid_frame <= f1) else g0
+        active_groups = {g for g in (g0, g1) if g is not None}
+        if speed_lines:
+            active_groups.add("speed")
+
+        for grp_name, objs in self.fx_groups.items():
+            if grp_name not in active_groups:
+                for o in objs:
+                    o.hide_render = True
+                    o.hide_viewport = True
+                continue
+
+            if grp_name == "speed":
+                start_f, end_f = f0, f1
+            elif g0 == grp_name and g1 == grp_name:
+                start_f, end_f = f0, f1
+            elif g0 == grp_name:
+                start_f, end_f = f0, max(f0 + 1, (mid_frame or f1) - 1)
+            else:
+                start_f, end_f = max(f0 + 1, mid_frame or f0), f1
+
+            for idx, o in enumerate(objs):
+                b_loc, _, b_sc = self.fx_base[o.name]
+                bx, by, bz = b_loc
+                sx, sy, sz = b_sc
+
+                # Visibility window via CONSTANT keyframes
+                if start_f > f0:
+                    o.hide_render = True
+                    o.hide_viewport = True
+                    o.keyframe_insert(data_path="hide_render", frame=f0)
+                    o.keyframe_insert(data_path="hide_viewport", frame=f0)
+                o.hide_render = False
+                o.hide_viewport = False
+                o.keyframe_insert(data_path="hide_render", frame=start_f)
+                o.keyframe_insert(data_path="hide_viewport", frame=start_f)
+                if end_f < f1:
+                    o.hide_render = True
+                    o.hide_viewport = True
+                    o.keyframe_insert(data_path="hide_render", frame=end_f + 1)
+                    o.keyframe_insert(data_path="hide_viewport", frame=end_f + 1)
+
+                span = max(4, end_f - start_f)
+                if grp_name == "sweat":
+                    # Dripping teardrop cascade
+                    step = max(6, span // 2)
+                    for k, kf in enumerate((start_f, min(end_f, start_f + step), end_f)):
+                        phase = (k + idx * 0.35) % 1.4
+                        dz = 0.05 - phase * 0.22
+                        pulse = 0.88 + 0.26 * math.sin(phase * math.pi)
+                        o.location = (bx, by, bz + dz)
+                        o.scale = (sx * pulse, sy * pulse, sz * pulse)
+                        o.keyframe_insert(data_path="location", frame=kf)
+                        o.keyframe_insert(data_path="scale", frame=kf)
+                elif grp_name == "steam":
+                    # Billowing steam puffs rising & expanding
+                    mid_k = start_f + span // 2
+                    dx_out = 0.14 if bx > 0 else -0.14
+                    for kf, prog, p_sc in ((start_f, 0.0, 0.72), (mid_k, 0.55, 1.24), (end_f, 1.0, 0.82)):
+                        o.location = (bx + dx_out * prog, by, bz + 0.36 * prog + 0.06 * (idx // 2))
+                        o.scale = (sx * p_sc, sy * p_sc, sz * p_sc)
+                        o.keyframe_insert(data_path="location", frame=kf)
+                        o.keyframe_insert(data_path="scale", frame=kf)
+                elif grp_name == "shock":
+                    # Snappy radial comic burst outward + slight vibrate
+                    pop_f = min(end_f, start_f + 5)
+                    mid_k = min(end_f, start_f + max(7, span // 2))
+                    for kf, rad_mul, sc_mul in ((start_f, 0.78, 0.45), (pop_f, 1.15, 1.22), (mid_k, 1.04, 1.05), (end_f, 1.10, 1.12)):
+                        o.location = (bx * rad_mul, by, bz * rad_mul)
+                        o.scale = (sx * sc_mul, sy * sc_mul, sz * sc_mul)
+                        o.keyframe_insert(data_path="location", frame=kf)
+                        o.keyframe_insert(data_path="scale", frame=kf)
+                elif grp_name == "speed":
+                    # Streaking comic action lines pulsing along -Y
+                    mid_k = start_f + span // 2
+                    for kf, dy, sc_y in ((start_f, 0.12, 0.80), (mid_k, -0.22, 1.28), (end_f, 0.05, 0.92)):
+                        o.location = (bx, by + dy, bz)
+                        o.scale = (sx, sy * sc_y, sz)
+                        o.keyframe_insert(data_path="location", frame=kf)
+                        o.keyframe_insert(data_path="scale", frame=kf)
+
+                if o.animation_data and o.animation_data.action:
+                    for fc in o.animation_data.action.fcurves:
+                        is_hide = fc.data_path in ("hide_render", "hide_viewport")
+                        for kp in fc.keyframe_points:
+                            kp.interpolation = "CONSTANT" if is_hide else "BEZIER"
 
     def key_pose(
         self,

@@ -243,6 +243,46 @@ def _animate_prop_spec(meta: dict, prop_spec: dict, n_frames: int, ep_dir: Path)
         trap_pin.location = (px0, py0, 1.18)
         trap_pin.keyframe_insert(data_path="location", frame=n_frames)
 
+    # Iteration 6: WWII Concrete Cargo Ship & Formwork
+    c_ship = meta.get("concrete_ship")
+    if c_ship is not None:
+        K.clear_object_anim(c_ship)
+        cmode = prop_spec.get("concrete_ship_mode", "bob")
+        x0, y0, z0 = tuple(prop_spec.get("concrete_ship_loc", c_ship.location))
+        rz = math.radians(float(prop_spec.get("concrete_ship_rot_z", math.degrees(c_ship.rotation_euler.z))))
+        if cmode == "docked":
+            c_ship.location = (x0, y0, z0)
+            c_ship.rotation_euler = (0.0, 0.0, rz)
+        else:
+            dx = float(prop_spec.get("concrete_ship_dx", 0.95))
+            mid = max(2, n_frames // 2)
+            c_ship.location = (x0, y0, z0)
+            c_ship.rotation_euler = (math.radians(-1.4), math.radians(1.0), rz)
+            c_ship.keyframe_insert(data_path="location", frame=1)
+            c_ship.keyframe_insert(data_path="rotation_euler", frame=1)
+            c_ship.location = (x0 + dx * 0.5, y0, z0 + 0.06)
+            c_ship.rotation_euler = (math.radians(1.6), math.radians(-1.2), rz)
+            c_ship.keyframe_insert(data_path="location", frame=mid)
+            c_ship.keyframe_insert(data_path="rotation_euler", frame=mid)
+            c_ship.location = (x0 + dx, y0, z0)
+            c_ship.rotation_euler = (math.radians(-0.8), math.radians(0.8), rz)
+            c_ship.keyframe_insert(data_path="location", frame=n_frames)
+            c_ship.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+
+    c_form = meta.get("concrete_formwork")
+    if c_form is not None:
+        show_form = bool(prop_spec.get("show_formwork", True))
+        for child in c_form.children:
+            child.hide_render = not show_form
+            child.hide_viewport = not show_form
+
+    o_pier = meta.get("ocean_pier")
+    if o_pier is not None:
+        show_pier = bool(prop_spec.get("show_pier", False))
+        for child in o_pier.children:
+            child.hide_render = not show_pier
+            child.hide_viewport = not show_pier
+
 
 def stage_shot(
     shot_spec: dict,
@@ -295,6 +335,15 @@ def stage_shot(
             )
         elif ca.get("mid_emotion") and mid_f is not None:
             act.set_emotion_at(mid_f, ca["mid_emotion"])
+
+        act.animate_emotion_fx(
+            1,
+            n_frames,
+            emo,
+            mid_emotion=ca.get("mid_emotion"),
+            mid_frame=mid_f,
+            speed_lines=bool(ca.get("speed_lines", False)),
+        )
 
     cm = shot_spec["camera"]
     K.animate_camera(

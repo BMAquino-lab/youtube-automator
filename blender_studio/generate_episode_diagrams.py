@@ -240,6 +240,52 @@ def render_diagram(spec: dict, out_path: Path) -> None:
             d.rounded_rectangle([180, 650, w - 180, 745], radius=14, fill=acc, outline=ink, width=5)
             d.text((w // 2, 698), str(spec["big_value"]).upper(), fill=(255, 248, 240), font=_font("arialbd.ttf", 46), anchor="mm")
 
+    elif layout == "archimedes_buoyancy":
+        # Cutaway waterline comparison: Solid stone block sinks vs Hollow concrete hull displaces > weight and floats!
+        left_t = str(spec.get("left_title", "SOLID CONCRETE"))
+        left_v = str(spec.get("left_value", "SINKS IMMEDIATELY"))
+        right_t = str(spec.get("right_title", "HOLLOW HULL"))
+        right_v = str(spec.get("right_value", "FLOATS ON AIR"))
+        d.line([w // 2, 265, w // 2, 745], fill=ink, width=5)
+        d.text((w // 4, 298), left_t, fill=ink, font=_font("arialbd.ttf", 40), anchor="mm")
+        d.text((3 * w // 4, 298), right_t, fill=acc2, font=_font("arialbd.ttf", 40), anchor="mm")
+        # Water boxes
+        for bx0, bx1 in ((72, w // 2 - 28), (w // 2 + 28, w - 72)):
+            d.rectangle([bx0, 415, bx1, 635], fill=(84, 152, 208), outline=ink, width=5)
+            d.line([bx0, 415, bx1, 415], fill=(240, 250, 255), width=6)
+        # Left sunken solid concrete slab at bottom
+        lx = w // 4
+        d.rectangle([lx - 90, 540, lx + 90, 625], fill=(138, 142, 144), outline=ink, width=6)
+        d.text((lx, 582), "NO AIR", fill=(255, 255, 255), font=_font("arialbd.ttf", 32), anchor="mm")
+        # Right hollow U-shaped concrete hull floating high above waterline
+        rx = 3 * w // 4
+        d.polygon([
+            (rx - 135, 365), (rx + 135, 365), (rx + 105, 495), (rx - 105, 495)
+        ], fill=(172, 176, 174), outline=ink)
+        d.polygon([
+            (rx - 95, 365), (rx + 95, 365), (rx + 75, 462), (rx - 75, 462)
+        ], fill=(224, 238, 252), outline=ink)
+        d.text((rx, 418), "TRAPPED AIR", fill=acc2, font=_font("arialbd.ttf", 28), anchor="mm")
+        d.text((lx, 695), left_v, fill=acc, font=_font("arialbd.ttf", 38), anchor="mm")
+        d.text((rx, 695), right_v, fill=acc2, font=_font("arialbd.ttf", 38), anchor="mm")
+
+    elif layout == "material_ratio":
+        # Two horizontal comparison bars for steel plate saved vs lightweight Haydite concrete
+        val = str(spec.get("big_value", "70% LESS STEEL PLATE"))
+        d.text((w // 2, 310), val, fill=acc, font=_font("arialbd.ttf", 68), anchor="mm")
+        rows = [
+            (str(spec.get("bar1_label", "STANDARD STEEL SHIP")), float(spec.get("bar1_frac", 0.92)), acc),
+            (str(spec.get("bar2_label", "C1-S-D1 CONCRETE SHIP")), float(spec.get("bar2_frac", 0.28)), acc2),
+        ]
+        for idx, (lbl, frac, col_f) in enumerate(rows):
+            ry = 415 + idx * 165
+            d.text((90, ry - 42), lbl.upper(), fill=ink, font=_font("arialbd.ttf", 36), anchor="lm")
+            track_x0, track_x1 = 90, w - 235
+            d.rounded_rectangle([track_x0, ry, track_x1, ry + 74], radius=12, fill=P["bg2"], outline=ink, width=5)
+            bar_w = max(60, int((track_x1 - track_x0) * min(1.0, max(0.05, frac))))
+            d.rounded_rectangle([track_x0, ry, track_x0 + bar_w, ry + 74], radius=12, fill=col_f, outline=ink, width=4)
+            d.text((w - 90, ry + 37), f"{int(round(frac * 100))}%", fill=col_f, font=_font("arialbd.ttf", 48), anchor="rm")
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out_path))
 

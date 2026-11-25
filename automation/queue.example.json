@@ -46,17 +46,21 @@
       "master_mp4": "outputs/ep07_deadliest_paper_map/master.mp4",
       "qa_report_json": "outputs/ep07_deadliest_paper_map/qa_report.json",
       "contact_sheet_jpg": "outputs/ep07_deadliest_paper_map/contact_sheet.jpg",
-      "status": "ready",
+      "status": "published",
       "iteration": 5
+    },
+    {
+      "episode_id": "ep08_concrete_ships_ww2",
+      "title": "Why The Navy Built Cargo Ships Out Of Concrete",
+      "description": "Facing a severe 1942 wartime steel plate shortage, the U.S. Maritime Commission ordered 24 steel-reinforced lightweight Haydite concrete cargo ships that floated via Archimedes' displacement and later served as permanent coastal breakwaters. #shorts #history #ww2 #engineering #fivestack",
+      "master_mp4": "outputs/ep08_concrete_ships_ww2/master.mp4",
+      "qa_report_json": "outputs/ep08_concrete_ships_ww2/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep08_concrete_ships_ww2/contact_sheet.jpg",
+      "status": "ready",
+      "iteration": 6
     }
   ],
   "topic_backlog": [
-    {
-      "slug": "ep08_concrete_ships_ww2",
-      "title_idea": "Why The Navy Built Cargo Ships Out Of Concrete",
-      "hook_object": "concrete hull",
-      "summary": "Facing a wartime steel shortage, engineers poured steel-reinforced lightweight concrete into floating Liberty ship molds that hauled cargo across the Pacific."
-    },
     {
       "slug": "ep09_glomar_explorer_sub",
       "title_idea": "Why A Billionaire Mined Rocks With A Giant Claw",
@@ -86,6 +90,12 @@
       "title_idea": "Why A Banker Mailed 40,000 Bricks Through The Post",
       "hook_object": "mailed bricks",
       "summary": "William Coltharp shipped a bank's entire brick facade as parcel post crates across Utah mountains because 1916 USPS postage cost a fraction of wagon freight."
+    },
+    {
+      "slug": "ep14_eiffel_tower_summer",
+      "title_idea": "Why The Eiffel Tower Grows Six Inches Every Summer",
+      "hook_object": "iron girders",
+      "summary": "Thermal expansion of 7,300 tons of puddled iron pushes the 330-meter tower upward by up to 15 cm and bends the sunward face away from Paris heat."
     }
   ]
 }

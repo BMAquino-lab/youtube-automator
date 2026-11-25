@@ -988,6 +988,214 @@ def build_courtroom_office_set(col: bpy.types.Collection, frame_end: int = 60) -
     }
 
 
+# --------------------------------------------------------------------------- 13-15. WWII CONCRETE CARGO SHIPS (Iteration 6)
+def _build_concrete_cargo_ship(
+    name: str,
+    loc: tuple[float, float, float],
+    scale: float,
+    col: bpy.types.Collection,
+    *,
+    rot_z_deg: float = 0.0,
+    with_rebar_cage: bool = False,
+) -> dict[str, bpy.types.Object]:
+    """Stylized WWII C1-S-D1 concrete Liberty cargo ship with grey concrete hull, cargo hatches, wheelhouse & optional rebar/formwork."""
+    root = _make_empty(f"{name}_Root", loc, col)
+    root.rotation_euler = (0.0, 0.0, math.radians(rot_z_deg))
+    root.scale = (scale, scale, scale)
+
+    m_conc = K.make_pbr_mat(f"{name}_HullConcrete", "Concrete", "#A8ACA8", uv_scale=3.8, emission_lift=0.18)
+    m_keel = K.make_toon_mat(f"{name}_Waterline", "#2A3038", emission_lift=0.08, roughness=0.72)
+    m_deck = K.make_pbr_mat(f"{name}_DeckConcrete", "Concrete", "#8C9296", uv_scale=4.0, emission_lift=0.14)
+    m_bridge = K.make_toon_mat(f"{name}_BridgeHouse", "#DCDAD2", emission_lift=0.20, roughness=0.68)
+    m_funnel = K.make_toon_mat(f"{name}_Funnel", "#323A44", emission_lift=0.10, roughness=0.55)
+    m_rust = K.make_toon_mat(f"{name}_RebarRust", "#7B442A", emission_lift=0.12, roughness=0.60)
+    m_crate = K.make_pbr_mat(f"{name}_CargoCrate", "WoodPlanks", "#D9AC72", uv_scale=2.5, emission_lift=0.14)
+    m_form = K.make_pbr_mat(f"{name}_FormWood", "WoodPlanks", "#BA8C58", uv_scale=3.2, emission_lift=0.14)
+
+    parts: list[bpy.types.Object] = [
+        K.add_box(f"{name}_Keel", (5.9, 1.38, 0.34), (0.0, 0.0, 0.16), m_keel, col, bevel=0.08, outline=0.024),
+        K.add_box(f"{name}_Hull", (5.7, 1.32, 0.68), (0.0, 0.0, 0.60), m_conc, col, bevel=0.08, outline=0.026),
+        K.add_box(f"{name}_Bow", (1.25, 0.78, 0.76), (2.78, 0.0, 0.62), m_conc, col, bevel=0.08, rot_deg=(0.0, -14.0, 0.0), outline=0.024),
+        K.add_box(f"{name}_Deck", (5.3, 1.22, 0.07), (0.0, 0.0, 0.96), m_deck, col, bevel=0.01),
+        # Central Liberty-style superstructure, wheelhouse, mast & funnel
+        K.add_box(f"{name}_Bridge", (1.25, 0.96, 0.72), (-0.15, 0.0, 1.32), m_bridge, col, bevel=0.04, outline=0.022),
+        K.add_box(f"{name}_Wheelhouse", (0.72, 0.82, 0.42), (0.05, 0.0, 1.82), m_bridge, col, bevel=0.03, outline=0.018),
+        K.add_cylinder(f"{name}_Funnel", 0.22, 0.85, (-0.52, 0.0, 1.72), m_funnel, col, rot_deg=(0.0, -6.0, 0.0), outline=0.020),
+        K.add_cylinder(f"{name}_FunnelBand", 0.23, 0.14, (-0.54, 0.0, 1.98), m_rust, col),
+        K.add_cylinder(f"{name}_ForeMast", 0.045, 1.55, (1.45, 0.0, 1.72), m_funnel, col, outline=0.014),
+        K.add_box(f"{name}_ForeYard", (0.04, 0.68, 0.04), (1.45, 0.0, 2.20), m_funnel, col, outline=0.010),
+        # Cargo hatches & stacked wooden supply crates
+        K.add_box(f"{name}_HatchF", (0.95, 0.72, 0.22), (1.35, 0.0, 1.08), m_keel, col, bevel=0.02, outline=0.016),
+        K.add_box(f"{name}_HatchA", (0.95, 0.72, 0.22), (-1.65, 0.0, 1.08), m_keel, col, bevel=0.02, outline=0.016),
+        K.add_box(f"{name}_Crate1", (0.48, 0.46, 0.36), (1.35, 0.12, 1.36), m_crate, col, bevel=0.02, rot_deg=(0.0, 0.0, 8.0), outline=0.014),
+        K.add_box(f"{name}_Crate2", (0.44, 0.42, 0.32), (-1.60, -0.10, 1.34), m_crate, col, bevel=0.02, rot_deg=(0.0, 0.0, -10.0), outline=0.014),
+    ]
+    for p in parts:
+        p.parent = root
+
+    form_root = _make_empty(f"{name}_FormworkRoot", (0.0, 0.0, 0.0), col)
+    form_root.parent = root
+    if with_rebar_cage:
+        f_parts: list[bpy.types.Object] = []
+        # Wooden timber mold ribs + exposed steel rebar mesh along sides
+        for sx in (-2.0, -1.0, 0.0, 1.0, 2.0):
+            for sy in (-0.76, 0.76):
+                f_parts.append(K.add_box(f"{name}_FormRib_{sx}_{sy}", (0.14, 0.10, 0.92), (sx, sy, 0.56), m_form, col, bevel=0.01, outline=0.012))
+        for rz in (0.35, 0.62, 0.88):
+            f_parts.append(K.add_box(f"{name}_RebarLongF_{rz}", (4.6, 0.04, 0.04), (0.0, 0.72, rz), m_rust, col))
+            f_parts.append(K.add_box(f"{name}_RebarLongB_{rz}", (4.6, 0.04, 0.04), (0.0, -0.72, rz), m_rust, col))
+        for fp in f_parts:
+            fp.parent = form_root
+
+    return {"root": root, "formwork": form_root}
+
+
+def build_concrete_drydock_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Sunlit WWII Tampa / Hookers Point graving basin where steel rebar + lightweight concrete hulls are poured."""
+    K.add_sunlit_sky_rig(
+        "ConcreteDockSun",
+        col,
+        sun_rot_deg=(48.0, 14.0, -30.0),
+        sun_energy=2.35,
+        sky_top="#2164C8",
+        sky_horizon="#7AC0F6",
+        sky_strength=0.84,
+        sun_disc_loc=(-5.5, -15.5, 9.2),
+    )
+
+    m_quay = K.make_pbr_mat("CDock_QuayConc", "Concrete", "#C4BFA8", uv_scale=4.5, emission_lift=0.16)
+    m_pier = K.make_pbr_mat("CDock_PierWood", "WoodPlanks", "#C29462", uv_scale=4.2, emission_lift=0.14)
+    m_water = K.make_toon_mat("CDock_BasinWater", "#2A6B98", emission_lift=0.16, roughness=0.22)
+    m_crane = K.make_pbr_mat("CDock_CraneYellow", "Metal", "#EEB63A", uv_scale=2.5, emission_lift=0.16)
+    m_silo = K.make_pbr_mat("CDock_CementSilo", "Concrete", "#B4B6B2", uv_scale=2.8, emission_lift=0.16)
+    m_rebar = K.make_toon_mat("CDock_RebarBundle", "#764228", emission_lift=0.10, roughness=0.55)
+    m_sack = K.make_toon_mat("CDock_CementBag", "#EAE2CE", emission_lift=0.20, roughness=0.80)
+
+    K.add_box("CDock_SeaFloor", (30.0, 24.0, 0.4), (0.0, -5.2, -0.30), m_water, col)
+    K.add_box("CDock_BasinDeck", (24.0, 7.5, 0.6), (0.0, 2.2, -0.30), m_quay, col, bevel=0.03)
+    K.add_box("CDock_TimberEdge", (24.0, 0.45, 0.20), (0.0, -1.45, 0.04), m_pier, col, bevel=0.02, outline=0.016)
+
+    # Cement batching silo & pouring gantry crane on right
+    K.add_cylinder("CDock_CementSilo", 0.95, 3.6, (-4.8, -5.0, 1.8), m_silo, col, outline=0.022)
+    K.add_cone("CDock_SiloRoof", 1.05, 0.08, 0.85, (-4.8, -5.0, 4.02), m_crane, col, outline=0.018)
+    K.add_box("CDock_CranePost", (0.46, 0.46, 4.4), (3.8, -2.0, 2.1), m_crane, col, bevel=0.02, outline=0.018)
+    K.add_box("CDock_CraneBoom", (3.8, 0.34, 0.34), (2.2, -2.0, 4.0), m_crane, col, bevel=0.02, rot_deg=(0.0, -14.0, 0.0), outline=0.018)
+
+    # Stacked cement sacks & steel rebar rods on the pier foreground flanks
+    for bi, (bx, by, bz) in enumerate(((-2.5, 0.25, 0.14), (-2.1, 0.30, 0.14), (-2.3, 0.28, 0.38))):
+        K.add_box(f"CDock_Sack{bi}", (0.44, 0.32, 0.22), (bx, by, bz), m_sack, col, bevel=0.04, rot_deg=(0.0, 0.0, 10.0 * bi), outline=0.014)
+    for ri in range(3):
+        K.add_cylinder(f"CDock_RebarRod{ri}", 0.032, 1.8, (2.55 + ri * 0.09, 0.25, 0.08), m_rebar, col, rot_deg=(90.0, 0.0, 12.0), outline=0.010)
+
+    ship_meta = _build_concrete_cargo_ship("CDock_ConcreteShip", (0.0, -3.5, -0.05), 0.94, col, rot_z_deg=6.0, with_rebar_cage=True)
+
+    K.spawn_background_crew(
+        "CDockCrew",
+        [
+            (-2.65, -0.95, 0.0, -18.0, "#D9D2C4", "#E8B838", 0.56),
+            (2.35, -0.95, 0.0, 22.0, "#2B5B84", "#E8B838", 0.56),
+        ],
+        col,
+        frame_end=frame_end,
+    )
+
+    return {
+        "col": col,
+        "sky": ("#2164C8", "#7AC0F6", 0.84),
+        "concrete_ship": ship_meta["root"],
+        "concrete_formwork": ship_meta["formwork"],
+        "fg_framing": [
+            K.add_foreground_framing_prop("CDock_FgRailingL", "railing", (-2.6, 2.9, 0.25), col, scale=0.85, rot_deg=(0.0, 0.0, 14.0)),
+            K.add_foreground_framing_prop("CDock_FgRivetsR", "rivets", (2.8, 2.7, 1.35), col, scale=0.90, rot_deg=(0.0, 0.0, -10.0)),
+        ],
+    }
+
+
+def build_concrete_ocean_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Sunlit Pacific / Atlantic ocean with floating concrete Liberty ship, foam wake & Archimedes buoyancy callouts."""
+    K.add_sunlit_sky_rig(
+        "ConcOceanSun",
+        col,
+        sun_rot_deg=(46.0, 16.0, -28.0),
+        sun_energy=2.35,
+        sky_top="#1E5EC2",
+        sky_horizon="#7ABDF5",
+        sky_strength=0.84,
+        sun_disc_loc=(-5.2, -16.0, 8.8),
+    )
+
+    m_sea1 = K.make_toon_mat("COcean_Blue1", "#256496", emission_lift=0.16, roughness=0.22)
+    m_sea2 = K.make_toon_mat("COcean_Blue2", "#2F78AD", emission_lift=0.18, roughness=0.20)
+    m_foam = K.make_toon_mat("COcean_Foam", "#F0F8FE", emission_lift=0.24, roughness=0.70)
+
+    K.add_box("COcean_Base", (36.0, 32.0, 0.6), (0.0, -4.0, -0.34), m_sea1, col)
+    for wi in range(-4, 2):
+        K.add_box(f"COcean_Wave{wi}", (32.0, 1.15, 0.22), (0.0, wi * 2.4 - 4.0, 0.02 if wi % 2 else -0.04), m_sea2, col, bevel=0.08, rot_deg=(8.0, 0.0, 0.0))
+
+    ship_meta = _build_concrete_cargo_ship("COcean_ConcreteShip", (0.0, -4.2, -0.02), 0.96, col, rot_z_deg=10.0, with_rebar_cage=False)
+    wake = K.add_box("COcean_FoamWake", (2.8, 0.50, 0.08), (-3.8, -4.4, 0.06), m_foam, col, bevel=0.04)
+    wake.parent = ship_meta["root"]
+
+    # Toggleable foreground wooden harbor pier for ocean character shots
+    m_pier = K.make_pbr_mat("COcean_PierWood", "WoodPlanks", "#C29462", uv_scale=4.2, emission_lift=0.14)
+    pier_root = _make_empty("COcean_PierRoot", (0.0, 0.0, 0.0), col)
+    p_deck = K.add_box("COcean_PierDeck", (20.0, 4.2, 0.55), (0.0, 1.9, -0.24), m_pier, col, bevel=0.03)
+    p_trim = K.add_box("COcean_PierEdge", (20.0, 0.35, 0.16), (0.0, -0.20, 0.06), m_pier, col, bevel=0.02, outline=0.016)
+    p_bol1 = K.add_cylinder("COcean_BollardL", 0.13, 0.38, (-2.6, -0.05, 0.21), m_sea1, col, outline=0.014)
+    p_bol2 = K.add_cylinder("COcean_BollardR", 0.13, 0.38, (2.6, -0.05, 0.21), m_sea1, col, outline=0.014)
+    for pp in (p_deck, p_trim, p_bol1, p_bol2):
+        pp.parent = pier_root
+
+    # Pulsing 3D Archimedes upward buoyancy vs weight arrows
+    arr_up = K.add_3d_callout_arrow("COcean_BuoyancyUp", (-0.45, -3.2, 0.25), (-0.45, -3.2, 1.85), "#3AE080", col, frame_end=frame_end)
+    arr_dn = K.add_3d_callout_arrow("COcean_GravityDown", (1.25, -3.2, 1.85), (1.25, -3.2, 0.30), "#FF5B4A", col, frame_end=frame_end)
+
+    return {
+        "col": col,
+        "sky": ("#1E5EC2", "#7ABDF5", 0.84),
+        "concrete_ship": ship_meta["root"],
+        "ocean_pier": pier_root,
+        "callout_arrows": [arr_up, arr_dn],
+    }
+
+
+def build_concrete_breakwater_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Post-war coastal harbor breakwater formed by sunken WWII concrete hulls blocking ocean swells."""
+    K.add_sunlit_sky_rig(
+        "BreakwaterSun",
+        col,
+        sun_rot_deg=(42.0, 18.0, -34.0),
+        sun_energy=2.25,
+        sky_top="#2462BA",
+        sky_horizon="#9AD0F5",
+        sky_strength=0.84,
+        sun_disc_loc=(-5.0, -16.0, 8.5),
+    )
+
+    m_sea = K.make_toon_mat("CBreak_Sea", "#235E8E", emission_lift=0.16, roughness=0.22)
+    m_foam = K.make_toon_mat("CBreak_Foam", "#F4FAFF", emission_lift=0.28, roughness=0.70)
+    m_sand = K.make_pbr_mat("CBreak_BeachSand", "Ground", "#DFC698", uv_scale=5.0, emission_lift=0.16)
+
+    K.add_box("CBreak_SeaFloor", (40.0, 34.0, 0.6), (0.0, -5.0, -0.30), m_sea, col)
+    K.add_box("CBreak_Shore", (36.0, 6.0, 0.45), (0.0, 2.8, -0.08), m_sand, col, bevel=0.05)
+
+    # Line of 3 iconic concrete hulls settled nose-to-stern as an offshore breakwater
+    hulls: list[bpy.types.Object] = []
+    for hi, (hx, hy, hz, r_z) in enumerate(((-4.2, -5.2, -0.24, 16.0), (0.2, -4.8, -0.22, 8.0), (4.6, -5.4, -0.26, 12.0))):
+        sm = _build_concrete_cargo_ship(f"CBreak_Hulk{hi}", (hx, hy, hz), 0.78, col, rot_z_deg=r_z, with_rebar_cage=False)
+        hulls.append(sm["root"])
+        K.add_box(f"CBreak_Foam{hi}", (4.4, 0.35, 0.08), (hx, hy + 0.85, 0.05), m_foam, col, bevel=0.03, rot_deg=(0.0, 0.0, r_z))
+
+    return {
+        "col": col,
+        "sky": ("#2462BA", "#9AD0F5", 0.84),
+        "concrete_ship": hulls[1],
+        "fg_framing": [
+            K.add_foreground_framing_prop("CBreak_FgRailing", "railing", (-1.8, 2.5, 0.25), col, scale=0.80, rot_deg=(0.0, 0.0, 14.0)),
+        ],
+    }
+
+
 SET_BUILDERS = {
     "meadow": build_wwii_meadow_set,
     "forest_sonic": build_wwii_forest_sonic_set,
@@ -1001,4 +1209,7 @@ SET_BUILDERS = {
     "drafting_office": build_drafting_office_set,
     "catskills_crossroads": build_catskills_crossroads_set,
     "courtroom_office": build_courtroom_office_set,
+    "concrete_drydock": build_concrete_drydock_set,
+    "concrete_ocean": build_concrete_ocean_set,
+    "concrete_breakwater": build_concrete_breakwater_set,
 }

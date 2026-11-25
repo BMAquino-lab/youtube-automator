@@ -99,18 +99,54 @@ def synthesize_elevenlabs(text: str, api_key: str, out_wav: Path) -> None:
 
 
 def synthesize_edge_tts(text: str, out_wav: Path) -> None:
+    import re
     import edge_tts
 
     out_wav.parent.mkdir(parents=True, exist_ok=True)
-    mp3 = out_wav.with_suffix(".mp3")
+    sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
+    chunks: list[str] = []
+    cur = ""
+    for s in sents:
+        if cur and len(cur) + 1 + len(s) > 400:
+            chunks.append(cur)
+            cur = s
+        else:
+            cur = f"{cur} {s}".strip()
+    if cur:
+        chunks.append(cur)
+    if not chunks:
+        chunks = [text]
 
-    async def _gen() -> None:
-        comm = edge_tts.Communicate(text, voice=EDGE_VOICE, rate=EDGE_RATE, pitch="+0Hz")
-        await comm.save(str(mp3))
+    part_mp3s: list[Path] = []
+    for idx, ch in enumerate(chunks):
+        part_mp = out_wav.with_name(f"{out_wav.stem}_part{idx}.mp3")
+        last_err: Exception | None = None
+        for attempt in range(5):
+            try:
+                async def _gen(chunk_text: str = ch, dest: Path = part_mp) -> None:
+                    comm = edge_tts.Communicate(chunk_text, voice=EDGE_VOICE, rate=EDGE_RATE, pitch="+0Hz")
+                    await asyncio.wait_for(comm.save(str(dest)), timeout=20.0)
 
-    asyncio.run(_gen())
-    subprocess.run([FFMPEG, "-y", "-v", "error", "-i", str(mp3), "-ar", "24000", "-ac", "1", str(out_wav)], check=True)
-    mp3.unlink(missing_ok=True)
+                asyncio.run(_gen())
+                if part_mp.exists() and part_mp.stat().st_size > 100:
+                    last_err = None
+                    break
+            except Exception as exc:
+                last_err = exc
+                print(f"[voice_manager] edge-tts chunk {idx+1}/{len(chunks)} retry {attempt+1}: {exc}", flush=True)
+        if last_err is not None:
+            raise last_err
+        part_mp3s.append(part_mp)
+
+    concat_list = out_wav.with_name(f"{out_wav.stem}_concat.txt")
+    concat_list.write_text("\n".join(f"file '{p.as_posix()}'" for p in part_mp3s), encoding="utf-8")
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(concat_list), "-ar", "24000", "-ac", "1", str(out_wav)],
+        check=True,
+    )
+    concat_list.unlink(missing_ok=True)
+    for p in part_mp3s:
+        p.unlink(missing_ok=True)
 
 
 def main() -> int:
