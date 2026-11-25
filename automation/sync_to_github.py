@@ -337,6 +337,8 @@ def sync_repo(commit_msg: str | None, push: bool) -> int:
     if not (REPO_DIR / ".git").exists():
         _git("init", "-b", "main")
     _git("config", "user.name", GIT_USER)
+    if GIT_USER:
+        _git("config", "credential.https://github.com.username", GIT_USER)
     if GIT_EMAIL:
         _git("config", "user.email", GIT_EMAIL)
     remotes = _git("remote", check=False).stdout.split()
