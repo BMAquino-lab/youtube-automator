@@ -1011,6 +1011,8 @@ class StickmanActor:
             "admiral": "#1D2C44",       # Royal Navy dark coat
             "uboat_captain": "#2A3038", # weathered dark leather U-boat coat
             "crew": "#D9D2C4",          # rolled wool dock/sailor sweater
+            "cartographer": "#2C5978",  # Prussian-blue 1930s drafting smock / vest
+            "storekeeper": "#9E462C",   # warm rust-brown Catskills country vest
         }
         t_hex = torso_hex or default_colors.get(preset, "#2B7A78")
 
@@ -1140,7 +1142,7 @@ class StickmanActor:
         for o in torso_accs:
             bindings.append((o, "Torso"))
         for p_name, p_obj in self.props.items():
-            b = "Forearm.R" if p_name in ("whistle_hand", "turning_bar", "trowel", "binoculars", "pointer_stick", "paintbrush", "telescope") else "Forearm.L"
+            b = "Forearm.R" if p_name in ("whistle_hand", "turning_bar", "trowel", "binoculars", "pointer_stick", "paintbrush", "telescope", "magnifying_glass") else "Forearm.L"
             bindings.append((p_obj, b))
 
         self.all_objs = [self.rig] + [o for o, _ in bindings]
@@ -1474,6 +1476,93 @@ class StickmanActor:
                 br.data.materials.append(make_toon_mat(f"{self.name}_PaintCyan", "#2AA6C8", 0.18))
                 add_ink_outline(br, 0.014)
                 self.props["paintbrush"] = br
+
+        elif preset == "cartographer":
+            # Green-tinted draftsman visor / spectacles + bow tie + magnifying glass + rolled map
+            m_visor = make_toon_mat(f"{self.name}_DraftVisor", "#2D7A4E", 0.22, roughness=0.35)
+            m_band = make_toon_mat(f"{self.name}_VisorBand", "#1E2228", 0.08, roughness=0.72)
+            bpy.ops.mesh.primitive_torus_add(major_segments=24, minor_segments=8, major_radius=0.51, minor_radius=0.032, location=(0.0, 0.0, 2.34))
+            band = bpy.context.active_object
+            band.rotation_euler = (math.radians(-6.0), 0.0, 0.0)
+            _finish(band, m_band, 0.014, head_accs)
+
+            bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.46, depth=0.035, location=(0.0, 0.30, 2.31))
+            vis = bpy.context.active_object
+            vis.scale = (0.98, 0.72, 1.0)
+            vis.rotation_euler = (math.radians(14.0), 0.0, 0.0)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+            _finish(vis, m_visor, 0.016, head_accs)
+
+            # Brass spectacles rim around both eyes
+            for sx in (-0.135, 0.135):
+                bpy.ops.mesh.primitive_torus_add(major_segments=18, minor_segments=6, major_radius=0.095, minor_radius=0.014, location=(sx, 0.525, 2.09))
+                spec = bpy.context.active_object
+                spec.rotation_euler = (math.radians(84.0), 0.0, 0.0)
+                _finish(spec, m_brass, 0.010, head_accs)
+
+            # Red bow tie + white collar
+            m_bow = make_toon_mat(f"{self.name}_RedBow", "#B8362B", 0.18, roughness=0.65)
+            for sx in (-1.0, 1.0):
+                bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.065, radius2=0.02, depth=0.13, location=(sx * 0.075, 0.30, 1.54))
+                w = bpy.context.active_object
+                w.rotation_euler = (0.0, math.radians(sx * 90.0), 0.0)
+                _finish(w, m_bow, 0.014, torso_accs)
+
+            # Held magnifying glass (Forearm.R) + rolled paper map (Forearm.L)
+            bpy.ops.mesh.primitive_torus_add(major_segments=20, minor_segments=8, major_radius=0.15, minor_radius=0.022, location=(0.54, 0.38, 0.84))
+            ring = bpy.context.active_object
+            ring.rotation_euler = (math.radians(78.0), 0.0, 0.0)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.024, depth=0.22, location=(0.54, 0.16, 0.84))
+            hdl = bpy.context.active_object
+            hdl.rotation_euler = (math.radians(78.0), 0.0, 0.0)
+            for o in bpy.context.selected_objects:
+                o.select_set(False)
+            ring.select_set(True)
+            hdl.select_set(True)
+            bpy.context.view_layer.objects.active = ring
+            bpy.ops.object.join()
+            mag = bpy.context.active_object
+            mag.name = f"{self.name}_PropMagGlass"
+            _smooth_mesh(mag)
+            mag.data.materials.append(m_brass)
+            add_ink_outline(mag, 0.015)
+            self.props["magnifying_glass"] = mag
+
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.065, depth=0.58, location=(-0.54, 0.16, 0.84))
+            rmap = bpy.context.active_object
+            rmap.name = f"{self.name}_PropRolledMap"
+            rmap.rotation_euler = (math.radians(78.0), math.radians(16.0), 0.0)
+            _smooth_mesh(rmap)
+            rmap.data.materials.append(make_toon_mat(f"{self.name}_MapPaper", "#EFE2BF", 0.18))
+            add_ink_outline(rmap, 0.016)
+            self.props["rolled_map"] = rmap
+
+        elif preset == "storekeeper":
+            # Straw boater / country flat hat + apron + rolled map
+            m_straw = make_toon_mat(f"{self.name}_StrawHat", "#DEC078", 0.18, roughness=0.72)
+            m_ribbon = make_toon_mat(f"{self.name}_StrawRibbon", "#9C2F28", 0.14, roughness=0.70)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.62, depth=0.045, location=(0.0, -0.02, 2.43))
+            _finish(bpy.context.active_object, m_straw, 0.020, head_accs)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.42, depth=0.22, location=(0.0, -0.02, 2.54))
+            _finish(bpy.context.active_object, m_straw, 0.020, head_accs)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.43, depth=0.075, location=(0.0, -0.02, 2.49))
+            _finish(bpy.context.active_object, m_ribbon, 0.0, head_accs)
+
+            m_apron = make_toon_mat(f"{self.name}_ApronCream", "#EFE8D8", 0.16, roughness=0.80)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.28, 1.05))
+            apron = bpy.context.active_object
+            apron.scale = (0.44, 0.14, 0.56)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(apron, m_apron, 0.014, torso_accs)
+
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.065, depth=0.58, location=(-0.54, 0.16, 0.84))
+            rmap = bpy.context.active_object
+            rmap.name = f"{self.name}_PropRolledMap"
+            rmap.rotation_euler = (math.radians(78.0), math.radians(16.0), 0.0)
+            _smooth_mesh(rmap)
+            rmap.data.materials.append(make_toon_mat(f"{self.name}_MapPaper", "#EFE2BF", 0.18))
+            add_ink_outline(rmap, 0.016)
+            self.props["rolled_map"] = rmap
 
         if "pointer_stick" not in self.props:
             bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.022, depth=0.95, location=(0.54, 0.38, 0.86))
@@ -2259,17 +2348,32 @@ def animate_camera(
     lens1: float | None = None,
     fstop: float = 3.2,
     use_dof: bool = False,
+    dof_dist0: float | None = None,
+    dof_dist1: float | None = None,
+    dof_dist_mid: float | None = None,
+    dof_mid_frac: float = 0.50,
+    fstop1: float | None = None,
 ) -> None:
     clear_object_anim(cam)
     clear_object_anim(cam.data)
-    q0 = aim_camera(cam, loc0, tgt0, lens=lens0, fstop=fstop, use_dof=use_dof)
+    q0 = aim_camera(cam, loc0, tgt0, lens=lens0, dof_dist=dof_dist0, fstop=fstop, use_dof=use_dof)
     cam.keyframe_insert(data_path="location", frame=f0)
     cam.keyframe_insert(data_path="rotation_quaternion", frame=f0)
     cam.data.keyframe_insert(data_path="lens", frame=f0)
     if use_dof:
         cam.data.dof.keyframe_insert(data_path="focus_distance", frame=f0)
+        cam.data.dof.keyframe_insert(data_path="aperture_fstop", frame=f0)
 
-    q1 = aim_camera(cam, loc1, tgt1, lens=(lens1 if lens1 is not None else lens0), fstop=fstop, use_dof=use_dof)
+    if use_dof and dof_dist_mid is not None and f1 - f0 >= 4:
+        f_mid = max(f0 + 1, min(f1 - 1, f0 + int(round((f1 - f0) * dof_mid_frac))))
+        cam.data.dof.focus_distance = float(dof_dist_mid)
+        cam.data.dof.keyframe_insert(data_path="focus_distance", frame=f_mid)
+        if fstop1 is not None:
+            cam.data.dof.aperture_fstop = float(fstop + (fstop1 - fstop) * dof_mid_frac)
+            cam.data.dof.keyframe_insert(data_path="aperture_fstop", frame=f_mid)
+
+    end_fstop = float(fstop1) if fstop1 is not None else fstop
+    q1 = aim_camera(cam, loc1, tgt1, lens=(lens1 if lens1 is not None else lens0), dof_dist=dof_dist1, fstop=end_fstop, use_dof=use_dof)
     if q1.dot(q0) < 0.0:
         q1.negate()
         cam.rotation_quaternion = q1
@@ -2278,12 +2382,62 @@ def animate_camera(
     cam.data.keyframe_insert(data_path="lens", frame=f1)
     if use_dof:
         cam.data.dof.keyframe_insert(data_path="focus_distance", frame=f1)
+        cam.data.dof.keyframe_insert(data_path="aperture_fstop", frame=f1)
 
     for owner in (cam, cam.data):
         if owner.animation_data and owner.animation_data.action:
             for fc in owner.animation_data.action.fcurves:
+                is_dof_curve = "dof." in fc.data_path
                 for kp in fc.keyframe_points:
-                    kp.interpolation = "LINEAR"
+                    kp.interpolation = "BEZIER" if is_dof_curve else "LINEAR"
+
+
+def add_foreground_framing_prop(
+    name: str,
+    kind: str,
+    loc: tuple[float, float, float],
+    col: bpy.types.Collection | None = None,
+    *,
+    scale: float = 1.0,
+    rot_deg: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> bpy.types.Object:
+    """Create a subtle dark foreground silhouette framing prop (branches, railing, rivets, drafting_edge)."""
+    root = bpy.data.objects.new(name, None)
+    root.empty_display_type = "PLAIN_AXES"
+    root.empty_display_size = 0.15
+    root.location = loc
+    root.rotation_euler = tuple(math.radians(a) for a in rot_deg)
+    root.scale = (scale, scale, scale)
+    link_to_collection(root, col)
+
+    m_sil = make_toon_mat(f"{name}_SilMat", "#191C22", emission_lift=0.02, roughness=0.90)
+    parts: list[bpy.types.Object] = []
+
+    if kind == "branches":
+        parts.append(add_cylinder(f"{name}_Limb", 0.045, 1.45, (0.0, 0.0, 0.0), m_sil, col, vertices=8, rot_deg=(12.0, 68.0, 8.0)))
+        for idx, (lx, ly, lz, sc) in enumerate(((-0.35, 0.05, 0.12, 0.26), (0.05, -0.04, 0.22, 0.22), (0.38, 0.04, 0.14, 0.20))):
+            parts.append(add_sphere(f"{name}_Leaf{idx}", sc, (lx, ly, lz), m_sil, col, segments=8, rings=6, scale=(1.3, 0.7, 0.8)))
+    elif kind == "railing":
+        parts.append(add_box(f"{name}_TopRail", (2.6, 0.08, 0.09), (0.0, 0.0, 0.42), m_sil, col, bevel=0.015))
+        for px in (-0.95, 0.0, 0.95):
+            parts.append(add_box(f"{name}_Post{px}", (0.08, 0.08, 0.85), (px, 0.0, 0.0), m_sil, col, bevel=0.012))
+    elif kind == "rivets":
+        parts.append(add_box(f"{name}_Beam", (0.28, 0.12, 2.4), (0.0, 0.0, 0.0), m_sil, col, bevel=0.02))
+        for rz in (-0.85, -0.45, -0.05, 0.35, 0.75):
+            parts.append(add_sphere(f"{name}_Rivet{rz}", 0.045, (0.0, 0.06, rz), m_sil, col, segments=8, rings=6))
+    elif kind == "drafting_edge":
+        parts.append(add_box(f"{name}_Ruler", (1.6, 0.08, 0.14), (0.0, 0.0, 0.0), m_sil, col, bevel=0.01, rot_deg=(0.0, 18.0, 0.0)))
+        parts.append(add_cylinder(f"{name}_LampArm", 0.04, 1.35, (-0.55, 0.0, 0.48), m_sil, col, vertices=10, rot_deg=(0.0, -28.0, 0.0)))
+    else:  # fence_corner
+        parts.append(add_box(f"{name}_Post", (0.14, 0.14, 1.25), (0.0, 0.0, 0.0), m_sil, col, bevel=0.02))
+        parts.append(add_box(f"{name}_Bar1", (1.5, 0.07, 0.09), (0.65, 0.0, 0.30), m_sil, col, bevel=0.01))
+        parts.append(add_box(f"{name}_Bar2", (1.5, 0.07, 0.09), (0.65, 0.0, -0.05), m_sil, col, bevel=0.01))
+
+    for p in parts:
+        if hasattr(p, "visible_shadow"):
+            p.visible_shadow = False
+        p.parent = root
+    return root
 
 
 # --------------------------------------------------------------------------- Iteration 3-4 Studio Helpers

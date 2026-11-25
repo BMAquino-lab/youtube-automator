@@ -59,7 +59,7 @@ def _base_card(spec: dict) -> tuple[Image.Image, ImageDraw.ImageDraw, dict]:
 
     footer = str(spec.get("footer", ""))
     if footer:
-        ff = _font("arialbd.ttf", 40)
+        ff = _font("arialbd.ttf", 40 if len(footer) <= 28 else 32)
         d.rectangle([38, h - 150, w - 38, h - 38], fill=P["bg2"])
         d.line([38, h - 150, w - 38, h - 150], fill=P["border"], width=4)
         d.text((w // 2, h - 94), footer.upper(), fill=P["ink"], font=ff, anchor="mm")
@@ -185,6 +185,60 @@ def render_diagram(spec: dict, out_path: Path) -> None:
         for bi in range(4):
             sx = 160 + bi * 185
             d.rounded_rectangle([sx, 600, sx + 140, 675], radius=12, fill=acc2 if bi % 2 == 0 else ink, outline=ink, width=4)
+
+    elif layout == "initials_puzzle":
+        top_lbl = str(spec.get("caption_top", "FOUNDER + ASSISTANT INITIALS"))
+        d.text((w // 2, 295), top_lbl.upper(), fill=ink, font=_font("arialbd.ttf", 38), anchor="mm")
+        source_letters = list(spec.get("source_letters", ["O", "G", "L", "E", "A"]))
+        target_letters = list(spec.get("target_letters", ["A", "G", "L", "O", "E"]))
+        box_w, gap = 130, 35
+        sx0 = (w - (len(source_letters) * box_w + (len(source_letters) - 1) * gap)) // 2
+        for idx, ch in enumerate(source_letters):
+            bx = sx0 + idx * (box_w + gap)
+            d.rounded_rectangle([bx, 345, bx + box_w, 465], radius=18, fill=P["bg2"], outline=ink, width=6)
+            d.text((bx + box_w // 2, 405), ch, fill=acc2, font=_font("arialbd.ttf", 78), anchor="mm")
+        d.text((w // 2, 515), "SCRAMBLED INTO FAKE TOWN", fill=acc, font=_font("arialbd.ttf", 38), anchor="mm")
+        tx0 = (w - (len(target_letters) * box_w + (len(target_letters) - 1) * gap)) // 2
+        for idx, ch in enumerate(target_letters):
+            bx = tx0 + idx * (box_w + gap)
+            d.rounded_rectangle([bx, 565, bx + box_w, 695], radius=18, fill=acc, outline=ink, width=6)
+            d.text((bx + box_w // 2, 630), ch, fill=(252, 248, 240), font=_font("arialbd.ttf", 82), anchor="mm")
+
+    elif layout == "map_trap":
+        # Stylized road grid + Catskills crossroads + highlighted fake town dot
+        d.rectangle([80, 265, w - 80, 725], fill=(238, 228, 198), outline=ink, width=6)
+        # Highway curves / diagonal crossroads
+        d.line([120, 640, w - 120, 340], fill=(196, 62, 48), width=16)
+        d.line([240, 285, 760, 700], fill=(72, 118, 168), width=14)
+        # Intersection circle + magnifying ring sized cleanly around text
+        cx, cy = w // 2, 490
+        d.ellipse([cx - 175, cy - 175, cx + 175, cy + 175], fill=(252, 246, 224), outline=ink, width=10)
+        d.ellipse([cx - 22, cy - 22, cx + 22, cy + 22], fill=acc, outline=ink, width=5)
+        d.text((cx, cy - 82), str(spec.get("big_value", "AGLOE, N.Y.")), fill=acc, font=_font("arialbd.ttf", 46), anchor="mm")
+        d.text((cx, cy + 82), str(spec.get("caption_top", "0 BUILDINGS")), fill=ink, font=_font("arialbd.ttf", 36), anchor="mm")
+        if spec.get("note"):
+            d.text((w // 2, 775), str(spec["note"]).upper(), fill=acc2, font=_font("arialbd.ttf", 34), anchor="mm")
+
+    elif layout == "lawsuit_verdict":
+        left_t = str(spec.get("left_title", "1930s MAP TRAP"))
+        left_v = str(spec.get("left_value", "EMPTY ROAD"))
+        right_t = str(spec.get("right_title", "1950s REALITY"))
+        right_v = str(spec.get("right_value", "REAL STORE"))
+        d.line([w // 2, 265, w // 2, 690], fill=ink, width=5)
+        d.text((w // 4, 315), left_t, fill=acc2, font=_font("arialbd.ttf", 40), anchor="mm")
+        d.text((3 * w // 4, 315), right_t, fill=acc, font=_font("arialbd.ttf", 40), anchor="mm")
+        # Left empty crossroad X
+        d.line([w // 4 - 90, 410, w // 4 + 90, 520], fill=ink, width=10)
+        d.line([w // 4 - 90, 520, w // 4 + 90, 410], fill=ink, width=10)
+        # Right store silhouette
+        sx, sy = 3 * w // 4, 465
+        d.rectangle([sx - 85, sy - 45, sx + 85, sy + 55], fill=acc2, outline=ink, width=5)
+        d.polygon([(sx - 98, sy - 45), (sx + 98, sy - 45), (sx, sy - 105)], fill=acc, outline=ink)
+        d.text((w // 4, 600), left_v, fill=ink, font=_font("arialbd.ttf", 48), anchor="mm")
+        d.text((3 * w // 4, 600), right_v, fill=acc, font=_font("arialbd.ttf", 48), anchor="mm")
+        if spec.get("big_value"):
+            d.rounded_rectangle([180, 650, w - 180, 745], radius=14, fill=acc, outline=ink, width=5)
+            d.text((w // 2, 698), str(spec["big_value"]).upper(), fill=(255, 248, 240), font=_font("arialbd.ttf", 46), anchor="mm")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out_path))

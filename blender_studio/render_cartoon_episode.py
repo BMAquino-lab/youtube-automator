@@ -209,6 +209,40 @@ def _animate_prop_spec(meta: dict, prop_spec: dict, n_frames: int, ep_dir: Path)
         if "reticle_loc" in prop_spec:
             reticle.location = tuple(prop_spec["reticle_loc"])
 
+    # Iteration 5: Foreground silhouette framing props, crossroads store & map pin
+    fg_list = meta.get("fg_framing")
+    if fg_list:
+        show_fg = bool(prop_spec.get("show_fg_framing", False))
+        for fg_root in fg_list:
+            for child in fg_root.children:
+                child.hide_render = not show_fg
+                child.hide_viewport = not show_fg
+
+    store = meta.get("store_building")
+    if store is not None:
+        show_store = bool(prop_spec.get("show_store", False))
+        for child in store.children:
+            child.hide_render = not show_store
+            child.hide_viewport = not show_store
+
+    sign = meta.get("crossroads_sign")
+    if sign is not None:
+        show_sign = bool(prop_spec.get("show_sign", True))
+        for child in sign.children:
+            child.hide_render = not show_sign
+            child.hide_viewport = not show_sign
+
+    trap_pin = meta.get("trap_pin")
+    if trap_pin is not None:
+        K.clear_object_anim(trap_pin)
+        px0, py0, pz0 = (0.12, -0.22, 1.50)
+        trap_pin.location = (px0, py0, pz0)
+        trap_pin.keyframe_insert(data_path="location", frame=1)
+        trap_pin.location = (px0, py0, 1.16)
+        trap_pin.keyframe_insert(data_path="location", frame=max(2, n_frames // 2))
+        trap_pin.location = (px0, py0, 1.18)
+        trap_pin.keyframe_insert(data_path="location", frame=n_frames)
+
 
 def stage_shot(
     shot_spec: dict,
@@ -275,6 +309,11 @@ def stage_shot(
         lens1=float(cm.get("lens1", cm.get("lens0", 40.0))),
         fstop=float(cm.get("fstop", 3.2)),
         use_dof=bool(cm.get("use_dof", False)),
+        dof_dist0=float(cm["dof_dist0"]) if "dof_dist0" in cm else None,
+        dof_dist1=float(cm["dof_dist1"]) if "dof_dist1" in cm else None,
+        dof_dist_mid=float(cm["dof_dist_mid"]) if "dof_dist_mid" in cm else None,
+        dof_mid_frac=float(cm.get("dof_mid_frac", 0.50)),
+        fstop1=float(cm["fstop1"]) if "fstop1" in cm else None,
     )
 
 

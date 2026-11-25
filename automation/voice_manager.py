@@ -31,7 +31,7 @@ STATUS_PATH = Path(__file__).resolve().parent / "voice_status.json"
 XI_VOICE_ID = "TX3LPaxmHKxFdv7VOQHJ"  # Liam
 XI_MODEL = "eleven_turbo_v2_5"
 EDGE_VOICE = "en-US-AndrewMultilingualNeural"
-EDGE_RATE = "+6%"
+EDGE_RATE = "+20%"
 
 
 def load_elevenlabs_key() -> str | None:

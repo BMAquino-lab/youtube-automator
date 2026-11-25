@@ -88,6 +88,27 @@
         "v4_ricksclips_cinema_24fps_pbr_lipflap"
       ],
       "recorded_at": "2026-11-25T04:22:41.291018+00:00"
+    },
+    {
+      "iteration": 5,
+      "episode_id": "ep07_deadliest_paper_map",
+      "title": "Why Cartographers Drew A Fake Town On Purpose",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 41,
+      "unique_clips": 36,
+      "approx_render_wall_min": 49.2,
+      "duration_s": 69.1,
+      "wpm": 204,
+      "word_recall_pct": 91,
+      "hook_luma": 111,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "edge_tts",
+      "upgrades_applied": [
+        "v4_beveled_prop_shadows_rim_dof"
+      ],
+      "recorded_at": "2026-11-25T13:31:09.939077+00:00"
     }
   ],
   "next_iteration_upgrades": [
@@ -113,7 +134,7 @@
       "id": "v4_beveled_prop_shadows_rim_dof",
       "title": "Foreground Silhouette Framing Props & Tight Rack-Focus Transitions",
       "details": "Add subtle blurred foreground framing silhouettes (branches, railings, rivets) and focus-distance keyframe shifts mid-shot for stronger miniature tilt-shift depth",
-      "status": "pending"
+      "status": "done (iter 5)"
     },
     {
       "id": "v5_motion_fx_streaks_dust_sparks",
