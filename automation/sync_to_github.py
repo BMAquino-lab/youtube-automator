@@ -315,8 +315,24 @@ def sync_repo(commit_msg: str | None, push: bool) -> int:
         return 2
     print("[secret_scan] SECRET_SCAN: PASS (0 issues)", flush=True)
 
-    def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", *args], cwd=str(REPO_DIR), capture_output=True, text=True, check=check)
+    git_env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+
+    def _git(*args: str, check: bool = True, timeout: int = 30) -> subprocess.CompletedProcess:
+        try:
+            return subprocess.run(
+                ["git", *args],
+                cwd=str(REPO_DIR),
+                env=git_env,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=check,
+            )
+        except subprocess.TimeoutExpired as exc:
+            msg = f"git {' '.join(args)} timed out after {timeout}s (interactive auth disabled)"
+            if check:
+                raise RuntimeError(msg) from exc
+            return subprocess.CompletedProcess(["git", *args], 124, stdout=exc.stdout or "", stderr=msg)
 
     if not (REPO_DIR / ".git").exists():
         _git("init", "-b", "main")
