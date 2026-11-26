@@ -30,7 +30,12 @@ import diorama_library as D      # noqa: E402
 FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg")
 
 
-def _activate_set(sets_meta: dict[str, dict], active_name: str, actors: dict[str, K.StickmanActor]) -> dict:
+def _activate_set(
+    sets_meta: dict[str, dict],
+    active_name: str,
+    actors: dict[str, K.StickmanActor],
+    shared_props: dict[str, bpy.types.Object] | None = None,
+) -> dict:
     for sname, meta in sets_meta.items():
         hide = sname != active_name
         col = meta["col"]
@@ -47,6 +52,15 @@ def _activate_set(sets_meta: dict[str, dict], active_name: str, actors: dict[str
     for act in actors.values():
         act.set_visible(False)
         act.reset_animation()
+
+    if shared_props:
+        for sp in shared_props.values():
+            K.clear_object_anim(sp)
+            sp.hide_render = True
+            sp.hide_viewport = True
+            for ch in sp.children:
+                ch.hide_render = True
+                ch.hide_viewport = True
     return active_meta
 
 
@@ -283,6 +297,146 @@ def _animate_prop_spec(meta: dict, prop_spec: dict, n_frames: int, ep_dir: Path)
             child.hide_render = not show_pier
             child.hide_viewport = not show_pier
 
+    # v6 Multi-Piece Diorama Reveals: Glomar Explorer Ship, Moon-Pool Doors & Clementine Claw
+    g_ship = meta.get("glomar_ship")
+    if g_ship is not None:
+        K.clear_object_anim(g_ship)
+        x0, y0, z0 = tuple(prop_spec.get("glomar_loc", g_ship.location))
+        rz = math.radians(float(prop_spec.get("glomar_rot_z", math.degrees(g_ship.rotation_euler.z))))
+        dx = float(prop_spec.get("glomar_dx", 0.55))
+        mid = max(2, n_frames // 2)
+        g_ship.location = (x0, y0, z0)
+        g_ship.rotation_euler = (math.radians(-1.2), math.radians(0.8), rz)
+        g_ship.keyframe_insert(data_path="location", frame=1)
+        g_ship.keyframe_insert(data_path="rotation_euler", frame=1)
+        g_ship.location = (x0 + dx * 0.5, y0, z0 + 0.05)
+        g_ship.rotation_euler = (math.radians(1.4), math.radians(-1.0), rz)
+        g_ship.keyframe_insert(data_path="location", frame=mid)
+        g_ship.keyframe_insert(data_path="rotation_euler", frame=mid)
+        g_ship.location = (x0 + dx, y0, z0)
+        g_ship.rotation_euler = (math.radians(-0.8), math.radians(0.6), rz)
+        g_ship.keyframe_insert(data_path="location", frame=n_frames)
+        g_ship.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+
+    doors = meta.get("moonpool_doors")
+    if doors and len(doors) == 2:
+        door_l, door_r = doors
+        K.clear_object_anim(door_l)
+        K.clear_object_anim(door_r)
+        mp_mode = prop_spec.get("moonpool_mode", "closed")
+        if mp_mode == "opening":
+            door_l.location = (-0.80, 0.0, 0.96)
+            door_r.location = (0.10, 0.0, 0.96)
+            door_l.keyframe_insert(data_path="location", frame=1)
+            door_r.keyframe_insert(data_path="location", frame=1)
+            door_l.location = (-1.65, 0.0, 0.96)
+            door_r.location = (0.95, 0.0, 0.96)
+            door_l.keyframe_insert(data_path="location", frame=max(2, int(n_frames * 0.72)))
+            door_r.keyframe_insert(data_path="location", frame=max(2, int(n_frames * 0.72)))
+        elif mp_mode == "open":
+            door_l.location = (-1.65, 0.0, 0.96)
+            door_r.location = (0.95, 0.0, 0.96)
+        else:
+            door_l.location = (-0.80, 0.0, 0.96)
+            door_r.location = (0.10, 0.0, 0.96)
+
+    g_claw = meta.get("glomar_claw")
+    if g_claw is not None:
+        c_root = g_claw["root"]
+        K.clear_object_anim(c_root)
+        K.clear_object_anim(g_claw["jaw_l"])
+        K.clear_object_anim(g_claw["jaw_r"])
+        z_start = float(prop_spec.get("glomar_claw_z0", 2.05))
+        z_end = float(prop_spec.get("glomar_claw_z1", z_start))
+        c_root.location = (-0.35, 0.0, z_start)
+        c_root.keyframe_insert(data_path="location", frame=1)
+        c_root.location = (-0.35, 0.0, z_end)
+        c_root.keyframe_insert(data_path="location", frame=n_frames)
+        jaw_ang = math.radians(float(prop_spec.get("glomar_claw_open_deg", 18.0)))
+        g_claw["jaw_l"].rotation_euler = (0.0, -jaw_ang, 0.0)
+        g_claw["jaw_r"].rotation_euler = (0.0, jaw_ang, 0.0)
+
+    # Abyss set: animated Clementine claw + two-piece Soviet K-129 submarine reveal
+    a_claw = meta.get("abyss_claw")
+    a_sub = meta.get("abyss_sub")
+    if a_claw is not None and a_sub is not None:
+        cr, jl, jr = a_claw["root"], a_claw["jaw_l"], a_claw["jaw_r"]
+        sr, sbow, saft = a_sub["root"], a_sub["bow"], a_sub["aft"]
+        for obj in (cr, jl, jr, sr, sbow, saft):
+            K.clear_object_anim(obj)
+        sbow.location = (0.0, 0.0, 0.0)
+        sbow.rotation_euler = (0.0, 0.0, 0.0)
+        saft.location = (0.0, 0.0, 0.0)
+        saft.rotation_euler = (0.0, 0.0, 0.0)
+
+        amode = prop_spec.get("abyss_mode", "hover")
+        mid = max(2, n_frames // 2)
+        if amode == "descend_grab":
+            sr.location = (0.0, -4.0, 0.56)
+            cr.location = (0.35, -4.0, 2.85)
+            jl.rotation_euler = (0.0, math.radians(-28.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(28.0), 0.0)
+            for o in (cr, jl, jr):
+                o.keyframe_insert(data_path="location" if o == cr else "rotation_euler", frame=1)
+            cr.location = (0.35, -4.0, 1.48)
+            cr.keyframe_insert(data_path="location", frame=mid)
+            jl.rotation_euler = (0.0, math.radians(-26.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(26.0), 0.0)
+            jl.keyframe_insert(data_path="rotation_euler", frame=mid)
+            jr.keyframe_insert(data_path="rotation_euler", frame=mid)
+            jl.rotation_euler = (0.0, math.radians(-4.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(4.0), 0.0)
+            jl.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+            jr.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+            cr.keyframe_insert(data_path="location", frame=n_frames)
+        elif amode == "hoist_up":
+            jl.rotation_euler = (0.0, math.radians(-4.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(4.0), 0.0)
+            cr.location = (0.35, -4.0, 1.48)
+            sr.location = (0.0, -4.0, 0.56)
+            cr.keyframe_insert(data_path="location", frame=1)
+            sr.keyframe_insert(data_path="location", frame=1)
+            cr.location = (0.35, -4.0, 2.72)
+            sr.location = (0.0, -4.0, 1.80)
+            cr.keyframe_insert(data_path="location", frame=n_frames)
+            sr.keyframe_insert(data_path="location", frame=n_frames)
+        elif amode == "break_apart":
+            jl.rotation_euler = (0.0, math.radians(-14.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(14.0), 0.0)
+            cr.location = (0.35, -4.0, 2.55)
+            sr.location = (0.0, -4.0, 1.62)
+            saft.location = (-0.22, 0.0, -0.25)
+            saft.rotation_euler = (0.0, math.radians(16.0), 0.0)
+            for o in (cr, sr, saft):
+                o.keyframe_insert(data_path="location", frame=1)
+            saft.keyframe_insert(data_path="rotation_euler", frame=1)
+            saft.location = (-0.75, 0.0, -1.35)
+            saft.rotation_euler = (0.0, math.radians(42.0), 0.0)
+            saft.keyframe_insert(data_path="location", frame=n_frames)
+            saft.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+            cr.location = (0.35, -4.0, 2.95)
+            sr.location = (0.0, -4.0, 2.02)
+            cr.keyframe_insert(data_path="location", frame=n_frames)
+            sr.keyframe_insert(data_path="location", frame=n_frames)
+        else:
+            sr.location = (0.0, -4.0, 0.56)
+            cr.location = (0.35, -4.0, 2.85)
+            jl.rotation_euler = (0.0, math.radians(-24.0), 0.0)
+            jr.rotation_euler = (0.0, math.radians(24.0), 0.0)
+            cr.keyframe_insert(data_path="location", frame=1)
+            cr.location = (0.35, -4.0, 2.55)
+            cr.keyframe_insert(data_path="location", frame=n_frames)
+
+    reels = meta.get("tape_reels")
+    if reels:
+        for ri, rl in enumerate(reels):
+            K.clear_object_anim(rl)
+            dir_s = 1.0 if ri % 2 == 0 else -1.0
+            rl.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+            rl.keyframe_insert(data_path="rotation_euler", frame=1)
+            rl.rotation_euler = (math.radians(90.0), math.radians(dir_s * 360.0), 0.0)
+            rl.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+
 
 def stage_shot(
     shot_spec: dict,
@@ -291,9 +445,31 @@ def stage_shot(
     actors: dict[str, K.StickmanActor],
     sets_meta: dict[str, dict],
     ep_dir: Path,
+    shared_props: dict[str, bpy.types.Object] | None = None,
 ) -> None:
-    meta = _activate_set(sets_meta, shot_spec["set"], actors)
-    _animate_prop_spec(meta, shot_spec.get("props", {}), n_frames, ep_dir)
+    meta = _activate_set(sets_meta, shot_spec["set"], actors, shared_props=shared_props)
+    prop_spec = shot_spec.get("props", {})
+    _animate_prop_spec(meta, prop_spec, n_frames, ep_dir)
+
+    sp_spec = prop_spec.get("shared_prop")
+    if sp_spec and shared_props and sp_spec.get("kind") in shared_props:
+        sp = shared_props[sp_spec["kind"]]
+        sp.hide_render = False
+        sp.hide_viewport = False
+        for ch in sp.children:
+            ch.hide_render = False
+            ch.hide_viewport = False
+        K.animate_shared_prop(
+            sp,
+            1,
+            n_frames,
+            mode=sp_spec.get("mode", "handoff"),
+            loc0=tuple(sp_spec.get("loc0", (-0.35, 0.55, 1.05))),
+            loc1=tuple(sp_spec.get("loc1", (0.35, 0.55, 1.08))),
+            mid_z_lift=float(sp_spec.get("mid_z_lift", 0.18)),
+            rot_deg0=tuple(sp_spec.get("rot_deg0", (0.0, 0.0, 12.0))),
+            rot_deg1=tuple(sp_spec.get("rot_deg1", (0.0, 0.0, -12.0))),
+        )
 
     for ca in shot_spec.get("actors", []):
         act = actors[ca["id"]]
@@ -318,6 +494,10 @@ def stage_shot(
             act.animate_peer_periscope(1, n_frames, root_loc=loc, yaw_deg=yaw, emotion=emo)
         elif action == "paint_stroke":
             act.animate_paint_stroke(1, n_frames, root_loc=loc, yaw_deg=yaw, emotion=emo)
+        elif action == "handoff":
+            act.animate_handoff(1, n_frames, role=ca.get("role", "giver"), root_loc=loc, yaw_deg=yaw, emotion=emo)
+        elif action == "two_hand_lift":
+            act.animate_two_hand_lift(1, n_frames, root_loc=loc, yaw_deg=yaw, emotion=emo, side=ca.get("side", "L"))
         else:
             act.animate_idle_talk(1, n_frames, emo, root_loc=loc, yaw_deg=yaw, intensity=inten)
 
@@ -325,7 +505,7 @@ def stage_shot(
             act.set_prop_visible(hp, True)
 
         mid_f = max(2, min(n_frames, int(round(n_frames * float(ca.get("mid_frame_frac", 0.50)))))) if ca.get("mid_emotion") else None
-        if action in ("idle_talk", "point", "paint_stroke", "peer_periscope", "salute", "laugh"):
+        if action in ("idle_talk", "point", "paint_stroke", "peer_periscope", "salute", "laugh", "handoff", "two_hand_lift"):
             act.animate_lip_flap(
                 1,
                 n_frames,
@@ -419,6 +599,12 @@ def main() -> None:
         col = K.get_or_create_collection(f"Set_{sname}")
         sets_meta[sname] = builder(col, frame_end=80)
 
+    sp_col = K.get_or_create_collection("SharedProps")
+    shared_props = {
+        kind: K.build_shared_prop(f"Shared_{kind}", kind=kind, col=sp_col)
+        for kind in ("classified_briefcase", "manganese_nodule", "salvage_crate")
+    }
+
     cam = K.ensure_camera("MainCam")
     shots_map: dict[str, dict] = plan["shots"]
     all_ids = sorted(shots_map.keys())
@@ -428,7 +614,7 @@ def main() -> None:
         prev_dir = STUDIO_DIR / "previews" / ep_id
         prev_dir.mkdir(parents=True, exist_ok=True)
         check_ids = plan.get("check_shots") or [all_ids[min(len(all_ids) - 1, k)] for k in (0, 2, 6, 11, 16, len(all_ids) - 2)]
-        stage_shot(shots_map[all_ids[0]], durations[all_ids[0]], cam, actors, sets_meta, ep_dir)
+        stage_shot(shots_map[all_ids[0]], durations[all_ids[0]], cam, actors, sets_meta, ep_dir, shared_props=shared_props)
         blend_out = ep_dir / f"{ep_id}_blender_scene.blend"
         bpy.ops.wm.save_as_mainfile(filepath=str(blend_out))
         print(f"SAVED BLEND: {blend_out}", flush=True)
@@ -438,7 +624,7 @@ def main() -> None:
         for sid in check_ids:
             t0 = time.time()
             nf = durations[sid]
-            stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir)
+            stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props)
             scn.frame_start = 1
             scn.frame_end = nf
             scn.frame_set(1)
@@ -463,7 +649,7 @@ def main() -> None:
     for idx, sid in enumerate(todo, 1):
         t0 = time.time()
         nf = durations[sid]
-        stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir)
+        stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props)
         scn.frame_start = 1
         scn.frame_end = nf
         out_mp4 = clips_dir / f"{sid}.mp4"

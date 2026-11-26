@@ -1014,6 +1014,8 @@ class StickmanActor:
             "cartographer": "#2C5978",  # Prussian-blue 1930s drafting smock / vest
             "storekeeper": "#9E462C",   # warm rust-brown Catskills country vest
             "naval_engineer": "#2B5B84", # slate-blue WWII naval shipyard engineer jacket
+            "tycoon": "#2A2E38",        # Howard Hughes charcoal billionaire suit
+            "cia_agent": "#1E2530",     # 1970s CIA dark trench coat / suit
         }
         t_hex = torso_hex or default_colors.get(preset, "#2B7A78")
 
@@ -1634,6 +1636,82 @@ class StickmanActor:
             trowel.data.materials.append(m_iron)
             add_ink_outline(trowel, 0.015)
             self.props["trowel"] = trowel
+
+        elif preset in ("tycoon", "cia_agent"):
+            # 1970s Fedora + dark glasses/aviators + suit collar & tie + dossier/briefcase
+            hat_hex = "#363338" if preset == "tycoon" else "#1D2026"
+            m_fed = make_toon_mat(f"{self.name}_Fedora", hat_hex, 0.10, roughness=0.72)
+            m_band = make_toon_mat(f"{self.name}_FedBand", "#16181C" if preset == "tycoon" else "#7E2424", 0.08)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.60, depth=0.045, location=(0.0, 0.02, 2.43))
+            brim = bpy.context.active_object
+            brim.scale = (1.02, 1.12, 1.0)
+            brim.rotation_euler = (math.radians(-6.0), 0.0, 0.0)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+            _finish(brim, m_fed, 0.020, head_accs)
+
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.41, depth=0.26, location=(0.0, -0.02, 2.55))
+            crown = bpy.context.active_object
+            crown.rotation_euler = (math.radians(-6.0), 0.0, 0.0)
+            _finish(crown, m_fed, 0.020, head_accs)
+
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.422, depth=0.065, location=(0.0, -0.01, 2.47))
+            band = bpy.context.active_object
+            band.rotation_euler = (math.radians(-6.0), 0.0, 0.0)
+            _finish(band, m_band, 0.0, head_accs)
+
+            if preset == "tycoon":
+                # Thin billionaire mustache + gold aviator rims
+                for sx in (-1.0, 1.0):
+                    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.065, location=(sx * 0.095, 0.528, 1.93))
+                    m_part = bpy.context.active_object
+                    m_part.scale = (1.45, 0.48, 0.45)
+                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+                    _finish(m_part, m_hair, 0.012, head_accs)
+                    bpy.ops.mesh.primitive_torus_add(major_segments=18, minor_segments=6, major_radius=0.098, minor_radius=0.014, location=(sx * 0.135, 0.525, 2.095))
+                    rim = bpy.context.active_object
+                    rim.rotation_euler = (math.radians(84.0), 0.0, 0.0)
+                    _finish(rim, m_gold, 0.010, head_accs)
+            else:
+                # Sleek rectangular 1970s CIA dark sunglasses frames
+                m_lens = make_toon_mat(f"{self.name}_DarkLens", "#141820", 0.06, roughness=0.20)
+                for sx in (-0.145, 0.145):
+                    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(sx, 0.545, 2.095))
+                    lens = bpy.context.active_object
+                    lens.scale = (0.21, 0.04, 0.105)
+                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+                    _finish(lens, m_lens, 0.010, head_accs)
+                bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.548, 2.125))
+                bridge = bpy.context.active_object
+                bridge.scale = (0.12, 0.03, 0.025)
+                bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+                _finish(bridge, m_dark_hat, 0.0, head_accs)
+
+            # White shirt collar + tie
+            for bx in (-0.08, 0.08):
+                bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx, 0.25, 1.54))
+                col_wing = bpy.context.active_object
+                col_wing.scale = (0.14, 0.12, 0.11)
+                col_wing.rotation_euler = (math.radians(15), 0.0, math.radians(-22 if bx > 0 else 22))
+                bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+                _finish(col_wing, m_white_col, 0.015, torso_accs)
+            tie_hex = "#B8362B" if preset == "cia_agent" else "#D49B26"
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.32, 1.24))
+            tie = bpy.context.active_object
+            tie.scale = (0.11, 0.05, 0.44)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            _finish(tie, make_toon_mat(f"{self.name}_SuitTie", tie_hex, 0.18), 0.012, torso_accs)
+
+            # Held rolled blueprint / classified folder
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-0.54, 0.22, 0.84))
+            folder = bpy.context.active_object
+            folder.name = f"{self.name}_PropDossier"
+            folder.scale = (0.06, 0.34, 0.44)
+            folder.rotation_euler = (math.radians(16.0), 0.0, math.radians(10.0))
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+            _smooth_mesh(folder)
+            folder.data.materials.append(make_toon_mat(f"{self.name}_DossierManila", "#DEC07E", 0.18))
+            add_ink_outline(folder, 0.015)
+            self.props["dossier"] = folder
 
         if "pointer_stick" not in self.props:
             bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.022, depth=0.95, location=(0.54, 0.38, 0.86))
@@ -2595,6 +2673,259 @@ class StickmanActor:
             arm_r_deg=(110.0, 0.0, -12.0),
             forearm_r_deg=(22.0, 0.0, 10.0),
         )
+
+    def animate_handoff(
+        self,
+        f0: int,
+        f1: int,
+        *,
+        role: str = "giver",
+        root_loc: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        yaw_deg: float = 0.0,
+        emotion: str = "SMUG",
+    ) -> None:
+        """v6 synchronized two-actor prop handoff: giver extends forward at mid-frame, receiver accepts & tucks in."""
+        self.key_face(f0, emotion)
+        mid = max(f0 + 2, (f0 + f1) // 2)
+        if role == "giver":
+            self.key_pose(
+                f0,
+                root_loc=root_loc,
+                root_yaw_deg=yaw_deg,
+                torso_scale=(1.03, 1.03, 0.97),
+                pelvis_loc=(0.0, 0.0, -0.02),
+                torso_rot_deg=(2.0, 0.0, 6.0),
+                head_rot_deg=(2.0, 0.0, -6.0),
+                arm_l_deg=(54.0, 0.0, -14.0),
+                forearm_l_deg=(68.0, 0.0, 22.0),
+                arm_r_deg=(54.0, 0.0, 14.0),
+                forearm_r_deg=(68.0, 0.0, -22.0),
+                interp="BACK",
+            )
+            self.key_pose(
+                mid,
+                torso_scale=(0.97, 0.97, 1.04),
+                pelvis_loc=(0.0, 0.05, 0.02),
+                torso_rot_deg=(-12.0, 0.0, -4.0),
+                head_rot_deg=(-4.0, 0.0, 5.0),
+                arm_l_deg=(92.0, 0.0, -10.0),
+                forearm_l_deg=(24.0, 0.0, 14.0),
+                arm_r_deg=(92.0, 0.0, 10.0),
+                forearm_r_deg=(24.0, 0.0, -14.0),
+                interp="BACK",
+            )
+            self.key_pose(
+                f1,
+                torso_scale=(1.0, 1.0, 1.0),
+                pelvis_loc=(0.0, 0.0, 0.0),
+                torso_rot_deg=(-3.0, 0.0, 0.0),
+                head_rot_deg=(4.0, 0.0, 2.0),
+                arm_l_deg=(30.0, 0.0, -14.0),
+                forearm_l_deg=(42.0, 0.0, 8.0),
+                arm_r_deg=(34.0, 0.0, 14.0),
+                forearm_r_deg=(46.0, 0.0, -8.0),
+            )
+        else:
+            self.key_pose(
+                f0,
+                root_loc=root_loc,
+                root_yaw_deg=yaw_deg,
+                torso_scale=(1.02, 1.02, 0.98),
+                pelvis_loc=(0.0, 0.0, -0.01),
+                torso_rot_deg=(2.0, 0.0, -5.0),
+                head_rot_deg=(3.0, 0.0, 5.0),
+                arm_l_deg=(42.0, 0.0, -16.0),
+                forearm_l_deg=(54.0, 0.0, 12.0),
+                arm_r_deg=(42.0, 0.0, 16.0),
+                forearm_r_deg=(54.0, 0.0, -12.0),
+                interp="BACK",
+            )
+            self.key_pose(
+                mid,
+                torso_scale=(0.98, 0.98, 1.03),
+                pelvis_loc=(0.0, 0.04, 0.02),
+                torso_rot_deg=(-10.0, 0.0, 4.0),
+                head_rot_deg=(-3.0, 0.0, -4.0),
+                arm_l_deg=(88.0, 0.0, -12.0),
+                forearm_l_deg=(28.0, 0.0, 14.0),
+                arm_r_deg=(88.0, 0.0, 12.0),
+                forearm_r_deg=(28.0, 0.0, -14.0),
+                interp="BACK",
+            )
+            self.key_pose(
+                f1,
+                torso_scale=(0.96, 0.96, 1.05),
+                pelvis_loc=(0.0, -0.02, 0.04),
+                torso_rot_deg=(4.0, 0.0, -2.0),
+                head_rot_deg=(6.0, 0.0, 4.0),
+                arm_l_deg=(58.0, 0.0, -16.0),
+                forearm_l_deg=(76.0, 0.0, 24.0),
+                arm_r_deg=(58.0, 0.0, 16.0),
+                forearm_r_deg=(76.0, 0.0, -24.0),
+                interp="BACK",
+            )
+
+    def animate_two_hand_lift(
+        self,
+        f0: int,
+        f1: int,
+        *,
+        root_loc: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        yaw_deg: float = 0.0,
+        emotion: str = "DETERMINED",
+        side: str = "L",
+    ) -> None:
+        """v6 synchronized two-actor shared prop lift: bend down together, heave upward in lockstep."""
+        self.key_face(f0, emotion)
+        mid = max(f0 + 2, (f0 + f1) // 2)
+        inward = -12.0 if side == "L" else 12.0
+        self.key_pose(
+            f0,
+            root_loc=root_loc,
+            root_yaw_deg=yaw_deg,
+            torso_scale=(1.06, 1.06, 0.93),
+            pelvis_loc=(0.0, 0.0, -0.10),
+            torso_rot_deg=(-18.0, 0.0, inward * 0.4),
+            head_rot_deg=(-8.0, 0.0, -inward * 0.4),
+            arm_l_deg=(68.0, 0.0, -10.0),
+            forearm_l_deg=(36.0, 0.0, 14.0),
+            arm_r_deg=(68.0, 0.0, 10.0),
+            forearm_r_deg=(36.0, 0.0, -14.0),
+            thigh_l_deg=(24.0, 0.0, -4.0),
+            shin_l_deg=(-36.0, 0.0, 0.0),
+            thigh_r_deg=(24.0, 0.0, 4.0),
+            shin_r_deg=(-36.0, 0.0, 0.0),
+            interp="BACK",
+        )
+        self.key_pose(
+            mid,
+            torso_scale=(0.96, 0.96, 1.05),
+            pelvis_loc=(0.0, 0.0, 0.05),
+            torso_rot_deg=(4.0, 0.0, 0.0),
+            head_rot_deg=(8.0, 0.0, 0.0),
+            arm_l_deg=(104.0, 0.0, -12.0),
+            forearm_l_deg=(44.0, 0.0, 14.0),
+            arm_r_deg=(104.0, 0.0, 12.0),
+            forearm_r_deg=(44.0, 0.0, -14.0),
+            thigh_l_deg=(4.0, 0.0, -3.0),
+            shin_l_deg=(-6.0, 0.0, 0.0),
+            thigh_r_deg=(4.0, 0.0, 3.0),
+            shin_r_deg=(-6.0, 0.0, 0.0),
+            interp="BACK",
+        )
+        self.key_pose(
+            f1,
+            torso_scale=(1.0, 1.0, 1.0),
+            pelvis_loc=(0.0, 0.0, 0.03),
+            torso_rot_deg=(2.0, 0.0, -inward * 0.25),
+            head_rot_deg=(6.0, 0.0, inward * 0.25),
+            arm_l_deg=(96.0, 0.0, -12.0),
+            forearm_l_deg=(48.0, 0.0, 14.0),
+            arm_r_deg=(96.0, 0.0, 12.0),
+            forearm_r_deg=(48.0, 0.0, -14.0),
+        )
+
+
+def build_shared_prop(
+    name: str,
+    kind: str = "classified_briefcase",
+    col: bpy.types.Collection | None = None,
+) -> bpy.types.Object:
+    """Build a reusable multi-part shared prop root for v6 handoffs and two-actor lifts."""
+    root = bpy.data.objects.new(name, None)
+    root.empty_display_type = "PLAIN_AXES"
+    root.empty_display_size = 0.16
+    link_to_collection(root, col)
+
+    m_gold = make_toon_mat(f"{name}_Gold", "#E2B238", 0.20, roughness=0.30)
+    m_dark = make_toon_mat(f"{name}_Dark", "#20242C", 0.10, roughness=0.55)
+    m_red = make_toon_mat(f"{name}_Red", "#C8342C", 0.28, roughness=0.50)
+
+    parts: list[bpy.types.Object] = []
+    if kind == "manganese_nodule":
+        m_ore = make_toon_mat(f"{name}_Ore", "#3B404C", 0.12, roughness=0.42)
+        m_tag = make_toon_mat(f"{name}_Tag", "#F0DCA4", 0.22, roughness=0.65)
+        for idx, (ox, oy, oz, rad) in enumerate((
+            (0.0, 0.0, 0.0, 0.18),
+            (-0.12, 0.04, 0.04, 0.12),
+            (0.11, -0.03, 0.05, 0.13),
+            (0.02, 0.08, -0.04, 0.11),
+        )):
+            parts.append(add_sphere(f"{name}_OreNode{idx}", rad, (ox, oy, oz), m_ore, col, segments=12, rings=8, outline=0.014))
+        parts.append(add_box(f"{name}_SampleTag", (0.20, 0.03, 0.11), (0.0, 0.18, 0.04), m_tag, col, bevel=0.008, outline=0.010))
+    elif kind == "salvage_crate":
+        m_crate = make_toon_mat(f"{name}_Olive", "#556442", 0.14, roughness=0.62)
+        m_warn = make_toon_mat(f"{name}_Hazard", "#E8B638", 0.24, roughness=0.45)
+        parts.append(add_box(f"{name}_CrateBody", (0.62, 0.42, 0.36), (0.0, 0.0, 0.0), m_crate, col, bevel=0.02, outline=0.016))
+        parts.append(add_box(f"{name}_Stripe", (0.64, 0.44, 0.07), (0.0, 0.0, 0.02), m_warn, col, bevel=0.01))
+        for hx in (-0.33, 0.33):
+            parts.append(add_cylinder(f"{name}_Handle{hx}", 0.022, 0.22, (hx, 0.0, 0.08), m_dark, col, rot_deg=(90.0, 0.0, 0.0), outline=0.010))
+    else:  # classified_briefcase
+        parts.append(add_box(f"{name}_CaseBody", (0.48, 0.14, 0.34), (0.0, 0.0, 0.0), m_dark, col, bevel=0.02, outline=0.016))
+        parts.append(add_box(f"{name}_TopSecretBand", (0.28, 0.155, 0.11), (0.0, 0.0, 0.0), m_red, col, bevel=0.01))
+        parts.append(add_box(f"{name}_Handle", (0.16, 0.04, 0.06), (0.0, 0.0, 0.20), m_gold, col, bevel=0.01, outline=0.010))
+        for cx in (-0.14, 0.14):
+            parts.append(add_box(f"{name}_Clasp{cx}", (0.045, 0.156, 0.055), (cx, 0.0, 0.14), m_gold, col, bevel=0.008))
+
+    for p in parts:
+        p.parent = root
+    return root
+
+
+def animate_shared_prop(
+    root: bpy.types.Object,
+    f0: int,
+    f1: int,
+    *,
+    mode: str = "handoff",
+    loc0: tuple[float, float, float] = (-0.35, 0.55, 1.05),
+    loc1: tuple[float, float, float] = (0.35, 0.55, 1.08),
+    mid_z_lift: float = 0.18,
+    rot_deg0: tuple[float, float, float] = (0.0, 0.0, 12.0),
+    rot_deg1: tuple[float, float, float] = (0.0, 0.0, -12.0),
+) -> None:
+    """Keyframe a shared prop across two actors (handoff arc or synchronized heavy lift)."""
+    clear_object_anim(root)
+    mid = max(f0 + 2, (f0 + f1) // 2)
+    if mode == "shared_lift":
+        mx = (loc0[0] + loc1[0]) * 0.5
+        my = (loc0[1] + loc1[1]) * 0.5
+        mz = max(loc0[2], loc1[2]) + mid_z_lift
+        root.location = loc0
+        root.rotation_euler = tuple(math.radians(a) for a in rot_deg0)
+        root.keyframe_insert(data_path="location", frame=f0)
+        root.keyframe_insert(data_path="rotation_euler", frame=f0)
+        root.location = (mx, my, mz)
+        root.rotation_euler = tuple(math.radians((a + b) * 0.5) for a, b in zip(rot_deg0, rot_deg1))
+        root.keyframe_insert(data_path="location", frame=mid)
+        root.keyframe_insert(data_path="rotation_euler", frame=mid)
+        root.location = loc1
+        root.rotation_euler = tuple(math.radians(a) for a in rot_deg1)
+        root.keyframe_insert(data_path="location", frame=f1)
+        root.keyframe_insert(data_path="rotation_euler", frame=f1)
+    else:
+        mx = (loc0[0] + loc1[0]) * 0.5
+        my = (loc0[1] + loc1[1]) * 0.5
+        mz = max(loc0[2], loc1[2]) + mid_z_lift
+        root.location = loc0
+        root.rotation_euler = tuple(math.radians(a) for a in rot_deg0)
+        root.keyframe_insert(data_path="location", frame=f0)
+        root.keyframe_insert(data_path="rotation_euler", frame=f0)
+        root.location = (mx, my, mz)
+        root.rotation_euler = (0.0, 0.0, 0.0)
+        root.keyframe_insert(data_path="location", frame=mid)
+        root.keyframe_insert(data_path="rotation_euler", frame=mid)
+        root.location = loc1
+        root.rotation_euler = tuple(math.radians(a) for a in rot_deg1)
+        root.keyframe_insert(data_path="location", frame=f1)
+        root.keyframe_insert(data_path="rotation_euler", frame=f1)
+
+    if root.animation_data and root.animation_data.action:
+        for fc in root.animation_data.action.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "BACK"
+                if hasattr(kp, "easing"):
+                    kp.easing = "EASE_OUT"
 
 
 def ensure_camera(name: str = "MainCam") -> bpy.types.Object:

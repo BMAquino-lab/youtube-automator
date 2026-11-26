@@ -1196,6 +1196,267 @@ def build_concrete_breakwater_set(col: bpy.types.Collection, frame_end: int = 60
     }
 
 
+def _build_giant_claw(
+    name: str,
+    loc: tuple[float, float, float],
+    scale: float,
+    col: bpy.types.Collection,
+) -> dict:
+    """Articulated multi-piece mechanical capture claw ('Clementine') with hinged left/right jaws."""
+    root = _make_empty(name, loc, col)
+    root.scale = (scale, scale, scale)
+
+    m_steel = K.make_pbr_mat(f"{name}_Steel", "Metal", "#4A5868", uv_scale=2.2, emission_lift=0.16)
+    m_yellow = K.make_pbr_mat(f"{name}_HazardYel", "Metal", "#E8B030", uv_scale=2.2, emission_lift=0.20)
+    m_dark = K.make_toon_mat(f"{name}_DarkMech", "#222832", emission_lift=0.10, roughness=0.45)
+
+    pipe = K.add_cylinder(f"{name}_DrillPipe", 0.14, 5.2, (0.0, 0.0, 2.9), m_steel, col, vertices=14, outline=0.018)
+    head = K.add_box(f"{name}_Crosshead", (1.65, 0.90, 0.48), (0.0, 0.0, 0.35), m_yellow, col, bevel=0.03, outline=0.020)
+    hub = K.add_cylinder(f"{name}_CenterHub", 0.34, 0.72, (0.0, 0.0, 0.15), m_dark, col, vertices=14, rot_deg=(90.0, 0.0, 0.0), outline=0.016)
+    for part in (pipe, head, hub):
+        part.parent = root
+
+    jaws: list[bpy.types.Object] = []
+    for side_lbl, sx in (("L", -1.0), ("R", 1.0)):
+        pivot = _make_empty(f"{name}_JawPivot{side_lbl}", (sx * 0.62, 0.0, 0.15), col)
+        pivot.parent = root
+        arm = K.add_box(f"{name}_Arm{side_lbl}", (0.24, 0.56, 1.15), (sx * 0.20, 0.0, -0.52), m_yellow, col, bevel=0.02, rot_deg=(0.0, sx * 14.0, 0.0), outline=0.018)
+        tip = K.add_box(f"{name}_Tip{side_lbl}", (0.48, 0.52, 0.22), (sx * 0.02, 0.0, -1.04), m_steel, col, bevel=0.02, rot_deg=(0.0, sx * -22.0, 0.0), outline=0.016)
+        for p in (arm, tip):
+            p.parent = pivot
+        jaws.append(pivot)
+
+    return {"root": root, "jaw_l": jaws[0], "jaw_r": jaws[1]}
+
+
+def _build_soviet_sub(
+    name: str,
+    loc: tuple[float, float, float],
+    scale: float,
+    col: bpy.types.Collection,
+    *,
+    rot_z_deg: float = 8.0,
+) -> dict:
+    """Two-piece Soviet Golf-II ballistic submarine K-129 (bow + separable aft section)."""
+    root = _make_empty(name, loc, col)
+    root.rotation_euler = (0.0, 0.0, math.radians(rot_z_deg))
+    root.scale = (scale, scale, scale)
+
+    m_hull = K.make_pbr_mat(f"{name}_SubHull", "Metal", "#28313D", uv_scale=2.5, emission_lift=0.14)
+    m_rust = K.make_toon_mat(f"{name}_SubRust", "#6E4234", emission_lift=0.12, roughness=0.72)
+    m_star = K.make_toon_mat(f"{name}_RedStar", "#D6362E", emission_lift=0.28, roughness=0.45)
+
+    bow = _make_empty(f"{name}_Bow", (0.0, 0.0, 0.0), col)
+    aft = _make_empty(f"{name}_Aft", (0.0, 0.0, 0.0), col)
+    bow.parent = root
+    aft.parent = root
+
+    # Bow + sail conning tower (front half recovered)
+    bow_cyl = K.add_cylinder(f"{name}_BowCyl", 0.52, 2.8, (0.95, 0.0, 0.0), m_hull, col, vertices=18, rot_deg=(0.0, 90.0, 0.0), outline=0.020)
+    bow_nose = K.add_sphere(f"{name}_BowNose", 0.52, (2.35, 0.0, 0.0), m_hull, col, segments=16, rings=10, scale=(1.35, 0.96, 0.96), outline=0.020)
+    sail = K.add_box(f"{name}_Sail", (1.05, 0.34, 0.72), (0.65, 0.0, 0.72), m_hull, col, bevel=0.04, outline=0.018)
+    dive_planes = K.add_box(f"{name}_DivePlanes", (0.36, 1.15, 0.08), (0.72, 0.0, 0.76), m_hull, col, bevel=0.02, outline=0.014)
+    mast = K.add_cylinder(f"{name}_Periscope", 0.045, 0.65, (0.82, 0.0, 1.32), m_rust, col, vertices=10, outline=0.012)
+    star = K.add_box(f"{name}_SailStar", (0.24, 0.37, 0.24), (0.68, 0.0, 0.78), m_star, col, bevel=0.01)
+    for p in (bow_cyl, bow_nose, sail, dive_planes, mast, star):
+        p.parent = bow
+
+    # Aft missile hull (breaks away during hoist)
+    aft_cyl = K.add_cylinder(f"{name}_AftCyl", 0.50, 2.5, (-1.65, 0.0, 0.0), m_hull, col, vertices=18, rot_deg=(0.0, 90.0, 0.0), outline=0.020)
+    aft_tail = K.add_cone(f"{name}_AftTail", 0.50, 0.14, 0.85, (-3.30, 0.0, 0.0), m_rust, col, vertices=16, rot_deg=(0.0, -90.0, 0.0), outline=0.018)
+    fin_v = K.add_box(f"{name}_TailFinV", (0.42, 0.08, 0.78), (-3.15, 0.0, 0.12), m_hull, col, bevel=0.01, outline=0.014)
+    for p in (aft_cyl, aft_tail, fin_v):
+        p.parent = aft
+
+    return {"root": root, "bow": bow, "aft": aft}
+
+
+def build_glomar_ship_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Sunlit 1974 ocean set featuring the Hughes Glomar Explorer mining ship, sliding moon-pool doors & giant claw."""
+    K.add_sunlit_sky_rig(
+        "GlomarSun",
+        col,
+        sun_rot_deg=(46.0, 14.0, -32.0),
+        sun_energy=2.35,
+        sky_top="#1F5FC4",
+        sky_horizon="#7DC2F6",
+        sky_strength=0.85,
+        sun_disc_loc=(-5.5, -15.5, 9.2),
+    )
+
+    m_sea1 = K.make_toon_mat("Glomar_Sea1", "#246496", emission_lift=0.16, roughness=0.22)
+    m_sea2 = K.make_toon_mat("Glomar_Sea2", "#2F7AAD", emission_lift=0.18, roughness=0.20)
+    m_hull = K.make_pbr_mat("Glomar_Hull", "Metal", "#3B4A5E", uv_scale=3.0, emission_lift=0.14)
+    m_boot = K.make_toon_mat("Glomar_BootRed", "#A63A2E", emission_lift=0.16, roughness=0.55)
+    m_white = K.make_toon_mat("Glomar_SuperWhite", "#F2F4F8", emission_lift=0.22, roughness=0.55)
+    m_derrick = K.make_pbr_mat("Glomar_Derrick", "Metal", "#EAA828", uv_scale=2.5, emission_lift=0.18)
+    m_pool = K.make_emissive_mat("Glomar_MoonPoolGlow", "#3AC8EC", strength=1.45)
+    m_pier = K.make_pbr_mat("Glomar_PierWood", "WoodPlanks", "#BD9060", uv_scale=4.0, emission_lift=0.14)
+
+    K.add_box("Glomar_OceanFloor", (40.0, 34.0, 0.6), (0.0, -4.5, -0.34), m_sea1, col)
+    for wi in range(-4, 2):
+        K.add_box(f"Glomar_Wave{wi}", (36.0, 1.15, 0.22), (0.0, wi * 2.4 - 4.0, 0.02 if wi % 2 else -0.04), m_sea2, col, bevel=0.08, rot_deg=(8.0, 0.0, 0.0))
+
+    # Hughes Glomar Explorer vessel root
+    ship_root = _make_empty("Glomar_ShipRoot", (0.0, -4.2, -0.04), col)
+    ship_root.rotation_euler = (0.0, 0.0, math.radians(10.0))
+    hull = K.add_box("Glomar_HullBox", (7.4, 2.15, 0.95), (0.0, 0.0, 0.42), m_hull, col, bevel=0.06, outline=0.022)
+    boot = K.add_box("Glomar_BootLine", (7.48, 2.20, 0.22), (0.0, 0.0, 0.04), m_boot, col, bevel=0.02)
+    bow = K.add_cone("Glomar_Bow", 1.10, 0.14, 1.55, (4.35, 0.0, 0.44), m_hull, col, vertices=4, rot_deg=(0.0, 90.0, 45.0), outline=0.020)
+    bridge = K.add_box("Glomar_Bridge", (1.65, 1.55, 1.25), (2.25, 0.0, 1.48), m_white, col, bevel=0.04, outline=0.018)
+    stern_helipad = K.add_box("Glomar_Helipad", (1.45, 1.65, 0.35), (-2.65, 0.0, 1.04), m_white, col, bevel=0.02, outline=0.016)
+    # Central A-frame gimballed lifting derrick
+    derrick_l = K.add_box("Glomar_DerrickL", (0.28, 0.28, 2.85), (-0.45, -0.62, 2.25), m_derrick, col, bevel=0.02, rot_deg=(-12.0, 8.0, 0.0), outline=0.016)
+    derrick_r = K.add_box("Glomar_DerrickR", (0.28, 0.28, 2.85), (-0.45, 0.62, 2.25), m_derrick, col, bevel=0.02, rot_deg=(12.0, 8.0, 0.0), outline=0.016)
+    derrick_top = K.add_box("Glomar_DerrickTop", (1.15, 1.25, 0.28), (-0.30, 0.0, 3.60), m_derrick, col, bevel=0.02, outline=0.016)
+    # Moon-pool opening & sliding doors (animated multi-piece reveal!)
+    pool_glow = K.add_box("Glomar_MoonPoolOpening", (1.75, 1.15, 0.10), (-0.35, 0.0, 0.90), m_pool, col, bevel=0.01)
+    door_l = K.add_box("Glomar_MoonDoorL", (0.88, 1.18, 0.14), (-0.80, 0.0, 0.96), m_derrick, col, bevel=0.02, outline=0.014)
+    door_r = K.add_box("Glomar_MoonDoorR", (0.88, 1.18, 0.14), (0.10, 0.0, 0.96), m_derrick, col, bevel=0.02, outline=0.014)
+
+    for p in (hull, boot, bow, bridge, stern_helipad, derrick_l, derrick_r, derrick_top, pool_glow, door_l, door_r):
+        p.parent = ship_root
+
+    claw_meta = _build_giant_claw("Glomar_Claw", (-0.35, 0.0, 2.05), 0.72, col)
+    claw_meta["root"].parent = ship_root
+
+    # Toggleable foreground harbor pier + manganese nodule crates
+    pier_root = _make_empty("Glomar_PierRoot", (0.0, 0.0, 0.0), col)
+    p_deck = K.add_box("Glomar_PierDeck", (20.0, 4.4, 0.55), (0.0, 1.9, -0.24), m_pier, col, bevel=0.03)
+    p_trim = K.add_box("Glomar_PierEdge", (20.0, 0.38, 0.18), (0.0, -0.22, 0.06), m_pier, col, bevel=0.02, outline=0.016)
+    p_bol1 = K.add_cylinder("Glomar_BollardL", 0.13, 0.40, (-2.6, -0.04, 0.22), m_hull, col, outline=0.014)
+    p_bol2 = K.add_cylinder("Glomar_BollardR", 0.13, 0.40, (2.6, -0.04, 0.22), m_hull, col, outline=0.014)
+    for pp in (p_deck, p_trim, p_bol1, p_bol2):
+        pp.parent = pier_root
+
+    K.spawn_background_crew(
+        "GlomarCrew",
+        [
+            (-3.45, -1.10, 0.04, -18.0, "#D9D2C4", "#E8B838", 0.52),
+            (3.45, -1.10, 0.04, 22.0, "#2B5B84", "#E8B838", 0.52),
+        ],
+        col,
+        frame_end=frame_end,
+    )
+
+    return {
+        "col": col,
+        "sky": ("#1F5FC4", "#7DC2F6", 0.85),
+        "glomar_ship": ship_root,
+        "moonpool_doors": [door_l, door_r],
+        "glomar_claw": claw_meta,
+        "ocean_pier": pier_root,
+        "fg_framing": [
+            K.add_foreground_framing_prop("Glomar_FgRailing", "railing", (-2.2, 2.8, 0.25), col, scale=0.85, rot_deg=(0.0, 0.0, 14.0)),
+            K.add_foreground_framing_prop("Glomar_FgRivets", "rivets", (2.6, 2.7, 1.35), col, scale=0.88, rot_deg=(0.0, 0.0, -10.0)),
+        ],
+    }
+
+
+def build_azorian_abyss_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Deep-Pacific seabed 3 miles (16,500 ft) down: Soviet K-129 wreck, manganese nodules & giant claw."""
+    K.add_sunlit_sky_rig(
+        "AbyssLight",
+        col,
+        sun_rot_deg=(34.0, 8.0, -18.0),
+        sun_energy=2.20,
+        sun_color="#C6EEFF",
+        sky_top="#0F4670",
+        sky_horizon="#2C89BA",
+        sky_strength=0.88,
+        sun_disc_loc=None,
+    )
+
+    m_floor = K.make_pbr_mat("Abyss_Seabed", "Ground", "#52788A", uv_scale=5.0, emission_lift=0.18)
+    m_ridge = K.make_toon_mat("Abyss_Ridge", "#3C6278", emission_lift=0.16, roughness=0.85)
+    m_nod = K.make_toon_mat("Abyss_Manganese", "#2B303A", emission_lift=0.14, roughness=0.45)
+
+    K.add_box("Abyss_Floor", (36.0, 32.0, 0.6), (0.0, -3.0, -0.32), m_floor, col, bevel=0.05)
+    for ri, (rx, ry, rw, rh) in enumerate(((-4.2, -5.8, 3.6, 0.9), (3.8, -6.2, 4.2, 1.1), (0.0, -8.8, 12.0, 1.6))):
+        K.add_box(f"Abyss_Ridge{ri}", (rw, 2.2, rh), (rx, ry, rh * 0.4), m_ridge, col, bevel=0.18, rot_deg=(0.0, 0.0, 8.0 * ri))
+
+    # Manganese nodules scattered across ocean floor
+    nodules: list[bpy.types.Object] = []
+    for ni, (nx, ny, nr) in enumerate(((-2.4, -2.6, 0.22), (-1.4, -2.0, 0.18), (1.8, -2.4, 0.24), (2.7, -3.2, 0.20), (-0.6, -1.8, 0.16))):
+        nd = K.add_sphere(f"Abyss_Nodule{ni}", nr, (nx, ny, nr * 0.72), m_nod, col, segments=10, rings=8, scale=(1.2, 0.95, 0.78), outline=0.014)
+        nodules.append(nd)
+
+    sub_meta = _build_soviet_sub("Abyss_K129", (0.0, -4.0, 0.56), 0.98, col, rot_z_deg=8.0)
+    claw_meta = _build_giant_claw("Abyss_Clementine", (0.35, -4.0, 2.95), 0.96, col)
+
+    # Depth arrows & floating ROV dust motes
+    arr_dn = K.add_3d_callout_arrow("Abyss_DepthArrow", (-2.8, -3.4, 3.3), (-2.8, -3.4, 0.4), "#4BE0FF", col, frame_end=frame_end)
+    K.add_floating_motes("Abyss_MarineSnow", (0.0, -3.6, 1.8), (3.2, 2.4, 1.4), col, count=22, color_hex="#A8E8FF", frame_end=frame_end, seed=29)
+
+    return {
+        "col": col,
+        "sky": ("#0F4670", "#2C89BA", 0.88),
+        "abyss_sub": sub_meta,
+        "abyss_claw": claw_meta,
+        "abyss_nodules": nodules,
+        "callout_arrows": [arr_dn],
+    }
+
+
+def build_cia_briefing_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """1970s CIA & Hughes command briefing room with Pacific chart, spinning tape-reel mainframes & handoff space."""
+    K.add_cinematic_3point_rig(
+        "CIABriefRig",
+        col,
+        key_loc=(0.0, 3.0, 4.4),
+        fill_loc=(-3.4, 4.0, 2.5),
+        rim_loc=(0.0, -2.4, 3.2),
+        key_energy=235.0,
+        fill_energy=105.0,
+        rim_energy=155.0,
+    )
+
+    m_floor = K.make_pbr_mat("CIA_FloorWood", "WoodPlanks", "#7A583E", uv_scale=4.0, emission_lift=0.14)
+    m_wall = K.make_pbr_mat("CIA_WallSlate", "Concrete", "#646E7C", uv_scale=3.8, emission_lift=0.16)
+    m_table = K.make_pbr_mat("CIA_Mahogany", "Wood", "#5C3222", uv_scale=2.8, emission_lift=0.14)
+    m_rack = K.make_pbr_mat("CIA_Mainframe", "Metal", "#2C3542", uv_scale=2.4, emission_lift=0.14)
+    m_reel = K.make_toon_mat("CIA_TapeReel", "#D8DFE8", emission_lift=0.22, roughness=0.32)
+    m_chart = K.make_toon_mat("CIA_ChartSea", "#3C76A4", emission_lift=0.22, roughness=0.55)
+    m_pin = K.make_toon_mat("CIA_TargetPin", "#E23D32", emission_lift=0.45, roughness=0.40)
+
+    K.add_box("CIA_Floor", (14.0, 12.0, 0.4), (0.0, 0.0, -0.20), m_floor, col)
+    K.add_box("CIA_BackWall", (14.0, 0.5, 6.2), (0.0, -3.2, 3.1), m_wall, col)
+    K.add_box("CIA_SideWallL", (0.5, 10.0, 6.2), (-4.6, 0.5, 3.1), m_wall, col)
+    K.add_box("CIA_SideWallR", (0.5, 10.0, 6.2), (4.6, 0.5, 3.1), m_wall, col)
+
+    # Briefing table positioned cleanly at Y=-0.75 so actors can stand in front (Y=0.75) for handoffs!
+    K.add_box("CIA_TableTop", (3.6, 1.5, 0.16), (0.0, -0.85, 0.98), m_table, col, bevel=0.03, outline=0.020)
+    for lx in (-1.55, 1.55):
+        for ly in (-1.45, -0.25):
+            K.add_cylinder(f"CIA_Leg_{lx}_{ly}", 0.08, 0.92, (lx, ly, 0.46), m_table, col, outline=0.012)
+
+    # Pacific Ocean target chart on wall & table
+    K.add_box("CIA_WallChartFrame", (3.4, 0.10, 2.0), (0.0, -2.88, 2.25), m_table, col, bevel=0.02, outline=0.018)
+    K.add_box("CIA_WallChartSea", (3.1, 0.12, 1.72), (0.0, -2.84, 2.25), m_chart, col)
+    pin = K.add_sphere("CIA_TargetK129", 0.12, (0.25, -2.72, 2.18), m_pin, col, segments=12, rings=8, outline=0.012)
+
+    # Spinning IBM-style mainframe tape reels in corners
+    reels: list[bpy.types.Object] = []
+    for sx in (-2.9, 2.9):
+        K.add_box(f"CIA_Rack_{sx}", (1.1, 0.75, 2.9), (sx, -2.45, 1.45), m_rack, col, bevel=0.03, outline=0.018)
+        for rx_off in (-0.26, 0.26):
+            rl = K.add_cylinder(f"CIA_Reel_{sx}_{rx_off}", 0.22, 0.08, (sx + rx_off, -2.04, 2.25), m_reel, col, vertices=16, rot_deg=(90.0, 0.0, 0.0), outline=0.012)
+            reels.append(rl)
+
+    K.add_warm_lantern("CIA_LampL", (-2.6, -1.8, 4.15), col, color_hex="#FFE2A4", energy=72.0, radius=0.14)
+    K.add_warm_lantern("CIA_LampR", (2.6, -1.8, 4.15), col, color_hex="#FFE2A4", energy=72.0, radius=0.14)
+
+    return {
+        "col": col,
+        "sky": ("#242B38", "#434E62", 0.62),
+        "map_markers": [pin],
+        "tape_reels": reels,
+        "fg_framing": [
+            K.add_foreground_framing_prop("CIA_FgEdge", "drafting_edge", (-2.1, 2.6, 0.45), col, scale=0.80, rot_deg=(0.0, 0.0, 12.0)),
+        ],
+    }
+
+
 SET_BUILDERS = {
     "meadow": build_wwii_meadow_set,
     "forest_sonic": build_wwii_forest_sonic_set,
@@ -1212,4 +1473,7 @@ SET_BUILDERS = {
     "concrete_drydock": build_concrete_drydock_set,
     "concrete_ocean": build_concrete_ocean_set,
     "concrete_breakwater": build_concrete_breakwater_set,
+    "glomar_ship": build_glomar_ship_set,
+    "azorian_abyss": build_azorian_abyss_set,
+    "cia_briefing": build_cia_briefing_set,
 }

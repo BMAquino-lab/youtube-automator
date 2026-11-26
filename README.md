@@ -17,6 +17,7 @@ Automated Blender 4.2 LTS 2D-on-3D stickman diorama studio, 20-gate quality assu
 | v4 | `ep06_dazzle_warships_v4` | `720x1280 @ 24fps` | 44 (40) | 43.34 min | 210 WPM / 95% recall / `20/20` |
 | v5 | `ep07_deadliest_paper_map` | `720x1280 @ 24fps` | 41 (36) | 49.2 min | 204 WPM / 91% recall / `20/20` |
 | v6 | `ep08_concrete_ships_ww2` | `720x1280 @ 24fps` | 40 (39) | 26.8 min | 197 WPM / 87% recall / `20/20` |
+| v7 | `ep09_glomar_explorer_sub` | `720x1280 @ 24fps` | 45 (34) | 24.5 min | 198 WPM / 95% recall / `20/20` |
 
 ## Local Setup
 1. Copy `.env.example` to `.env` and fill your local credentials (never commit `.env`).

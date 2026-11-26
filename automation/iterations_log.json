@@ -130,6 +130,27 @@
         "v5_motion_fx_streaks_dust_sparks"
       ],
       "recorded_at": "2026-11-25T22:47:23.917455+00:00"
+    },
+    {
+      "iteration": 7,
+      "episode_id": "ep09_glomar_explorer_sub",
+      "title": "Why A Billionaire Mined Rocks With A Giant Claw",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 45,
+      "unique_clips": 34,
+      "approx_render_wall_min": 24.5,
+      "duration_s": 70.4,
+      "wpm": 198,
+      "word_recall_pct": 95,
+      "hook_luma": 140,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "edge_tts",
+      "upgrades_applied": [
+        "v6_multi_prop_hand_swaps"
+      ],
+      "recorded_at": "2026-11-26T03:51:56.437431+00:00"
     }
   ],
   "next_iteration_upgrades": [
@@ -167,7 +188,7 @@
       "id": "v6_multi_prop_hand_swaps",
       "title": "Two-Handed Prop Interactions & Shared Set Choreography",
       "details": "Support two-actor synchronized prop lifting/handing off and animated multi-piece diorama reveals across sets",
-      "status": "pending"
+      "status": "done (iter 7)"
     },
     {
       "id": "v7_dynamic_headline_cards",

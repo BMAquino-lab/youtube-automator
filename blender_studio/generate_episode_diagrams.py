@@ -286,6 +286,35 @@ def render_diagram(spec: dict, out_path: Path) -> None:
             d.rounded_rectangle([track_x0, ry, track_x0 + bar_w, ry + 74], radius=12, fill=col_f, outline=ink, width=4)
             d.text((w - 90, ry + 37), f"{int(round(frac * 100))}%", fill=col_f, font=_font("arialbd.ttf", 48), anchor="rm")
 
+    elif layout == "depth_scale":
+        # Vertical ocean cross-section: surface mining ship -> 3 miles / 16,500 ft pipe -> seabed sub
+        top_lbl = str(spec.get("caption_top", "SURFACE: MINING SHIP"))
+        big_val = str(spec.get("big_value", "16,500 FT"))
+        bot_lbl = str(spec.get("note", "SOVIET SUB K-129"))
+        d.rectangle([80, 260, w - 80, 745], fill=(32, 92, 146), outline=ink, width=6)
+        # Sky band & waterline
+        d.rectangle([80, 260, w - 80, 345], fill=(148, 206, 244), outline=ink, width=4)
+        # Mini ship silhouette shifted slightly left, label cleanly on right
+        sx = w // 2 - 120
+        d.polygon([(sx - 110, 315), (sx + 110, 315), (sx + 88, 345), (sx - 88, 345)], fill=(58, 72, 94), outline=ink)
+        d.rectangle([sx - 22, 275, sx + 22, 315], fill=(238, 178, 48), outline=ink, width=3)
+        d.text((sx + 135, 302), top_lbl.upper(), fill=ink, font=_font("arialbd.ttf", 28), anchor="lm")
+        # Vertical drill pipe + depth ticks
+        d.line([sx, 345, sx, 645], fill=(238, 178, 48), width=12)
+        for ty in range(385, 630, 55):
+            d.line([sx - 30, ty, sx - 12, ty], fill=(230, 244, 255), width=4)
+        d.rounded_rectangle([sx + 48, 430, w - 105, 560], radius=14, fill=(20, 44, 78), outline=(255, 198, 72), width=5)
+        d.text(((sx + 48 + w - 105) // 2, 495), big_val, fill=(255, 198, 72), font=_font("arialbd.ttf", 64), anchor="mm")
+        # Seabed & submarine silhouette
+        d.rectangle([80, 685, w - 80, 745], fill=(92, 84, 68), outline=ink, width=4)
+        d.rounded_rectangle([sx - 105, 642, sx + 105, 685], radius=18, fill=(44, 52, 62), outline=ink, width=4)
+        d.rectangle([sx - 24, 616, sx + 20, 644], fill=(44, 52, 62), outline=ink, width=3)
+        d.text((w // 2, 715), bot_lbl.upper(), fill=(246, 244, 236), font=_font("arialbd.ttf", 32), anchor="mm")
+        # Subtle abyss depth rule below (kept low-contrast in caption zone 64%-79%)
+        d.rectangle([80, 770, w - 80, 1055], fill=(20, 52, 92), outline=ink, width=4)
+        for wy in (835, 905, 975):
+            d.line([110, wy, w - 110, wy], fill=(38, 84, 138), width=3)
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out_path))
 

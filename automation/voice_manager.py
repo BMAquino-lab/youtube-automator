@@ -107,7 +107,7 @@ def synthesize_edge_tts(text: str, out_wav: Path) -> None:
     chunks: list[str] = []
     cur = ""
     for s in sents:
-        if cur and len(cur) + 1 + len(s) > 400:
+        if cur and len(cur) + 1 + len(s) > 260:
             chunks.append(cur)
             cur = s
         else:
@@ -117,15 +117,18 @@ def synthesize_edge_tts(text: str, out_wav: Path) -> None:
     if not chunks:
         chunks = [text]
 
+    import time
+
     part_mp3s: list[Path] = []
     for idx, ch in enumerate(chunks):
         part_mp = out_wav.with_name(f"{out_wav.stem}_part{idx}.mp3")
+        part_mp.unlink(missing_ok=True)
         last_err: Exception | None = None
         for attempt in range(5):
             try:
                 async def _gen(chunk_text: str = ch, dest: Path = part_mp) -> None:
                     comm = edge_tts.Communicate(chunk_text, voice=EDGE_VOICE, rate=EDGE_RATE, pitch="+0Hz")
-                    await asyncio.wait_for(comm.save(str(dest)), timeout=20.0)
+                    await asyncio.wait_for(comm.save(str(dest)), timeout=45.0)
 
                 asyncio.run(_gen())
                 if part_mp.exists() and part_mp.stat().st_size > 100:
@@ -133,7 +136,9 @@ def synthesize_edge_tts(text: str, out_wav: Path) -> None:
                     break
             except Exception as exc:
                 last_err = exc
+                part_mp.unlink(missing_ok=True)
                 print(f"[voice_manager] edge-tts chunk {idx+1}/{len(chunks)} retry {attempt+1}: {exc}", flush=True)
+                time.sleep(1.0 + attempt * 0.5)
         if last_err is not None:
             raise last_err
         part_mp3s.append(part_mp)

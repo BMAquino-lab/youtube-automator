@@ -56,17 +56,21 @@
       "master_mp4": "outputs/ep08_concrete_ships_ww2/master.mp4",
       "qa_report_json": "outputs/ep08_concrete_ships_ww2/qa_report.json",
       "contact_sheet_jpg": "outputs/ep08_concrete_ships_ww2/contact_sheet.jpg",
-      "status": "ready",
+      "status": "published",
       "iteration": 6
+    },
+    {
+      "episode_id": "ep09_glomar_explorer_sub",
+      "title": "Why A Billionaire Mined Rocks With A Giant Claw",
+      "description": "In 1974, billionaire Howard Hughes and the CIA disguised the massive 618-foot Hughes Glomar Explorer as a manganese nodule mining ship while secretly lowering a giant mechanical claw 16,500 feet to raise sunken Soviet submarine K-129. #shorts #history #coldwar #engineering #fivestack",
+      "master_mp4": "outputs/ep09_glomar_explorer_sub/master.mp4",
+      "qa_report_json": "outputs/ep09_glomar_explorer_sub/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep09_glomar_explorer_sub/contact_sheet.jpg",
+      "status": "ready",
+      "iteration": 7
     }
   ],
   "topic_backlog": [
-    {
-      "slug": "ep09_glomar_explorer_sub",
-      "title_idea": "Why A Billionaire Mined Rocks With A Giant Claw",
-      "hook_object": "mining ship",
-      "summary": "The CIA partnered with Howard Hughes to pretend the massive Hughes Glomar Explorer was harvesting ocean manganese nodules while secretly raising a sunken Soviet submarine three miles down."
-    },
     {
       "slug": "ep10_backward_typewriter_keys",
       "title_idea": "Why Keyboard Letters Are Scrambled Out Of Order",
@@ -96,6 +100,12 @@
       "title_idea": "Why The Eiffel Tower Grows Six Inches Every Summer",
       "hook_object": "iron girders",
       "summary": "Thermal expansion of 7,300 tons of puddled iron pushes the 330-meter tower upward by up to 15 cm and bends the sunward face away from Paris heat."
+    },
+    {
+      "slug": "ep15_silent_sub_propeller",
+      "title_idea": "Why Engineers Curved Submarine Blades Like Banana Peels",
+      "hook_object": "skewed blades",
+      "summary": "Changing stiff symmetric bronze propeller blades to swept five- and seven-blade skewed geometry eliminated collapsing cavitation bubbles that gave submarines away on sonar."
     }
   ]
 }
