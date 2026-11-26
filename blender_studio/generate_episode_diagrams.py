@@ -83,10 +83,163 @@ def _draw_tank_silhouette(d: ImageDraw.ImageDraw, cx: int, cy: int, scale: float
     d.rectangle([cx + int(50 * s), cy - int(66 * s), cx + int(185 * s), cy - int(48 * s)], fill=fill, outline=outline, width=4)
 
 
+def _draw_newspaper_headline(spec: dict) -> Image.Image:
+    """Procedural period-authentic newspaper front page with fold crease, masthead, bold headline & angled stamp."""
+    w = int(spec.get("width", 1024))
+    h = int(spec.get("height", 1250))
+    bg = (238, 227, 198)
+    bg_fold = (224, 211, 179)
+    ink = (26, 22, 18)
+    acc = (178, 38, 30)
+    acc2 = (44, 78, 114)
+    img = Image.new("RGB", (w, h), bg)
+    d = ImageDraw.Draw(img)
+
+    # Subtle newsprint grain bands & horizontal center-fold crease shadow
+    for yy in range(0, h, 6):
+        shade = 236 - ((yy * 13) % 7)
+        d.line([0, yy, w, yy], fill=(shade, shade - 11, shade - 38), width=2)
+    d.rectangle([0, h // 2 - 14, w, h // 2 + 14], fill=bg_fold)
+    d.line([0, h // 2, w, h // 2], fill=(198, 184, 152), width=4)
+
+    # Outer double press rule
+    d.rectangle([24, 24, w - 24, h - 24], outline=ink, width=8)
+    d.rectangle([38, 38, w - 38, h - 38], outline=ink, width=2)
+
+    # Masthead & dateline
+    masthead = str(spec.get("masthead", "THE MILWAUKEE CHRONICLE")).upper()
+    dateline = str(spec.get("dateline", "VOL. XII  ·  NO. 41  ·  1868  ·  PRICE 2 CENTS")).upper()
+    d.text((w // 2, 102), masthead, fill=ink, font=_font("georgiab.ttf", 54 if len(masthead) <= 24 else 42), anchor="mm")
+    d.line([54, 148, w - 54, 148], fill=ink, width=5)
+    d.text((w // 2, 176), dateline, fill=ink, font=_font("arialbd.ttf", 26), anchor="mm")
+    d.line([54, 204, w - 54, 204], fill=ink, width=3)
+
+    # Bold banner headline (kept cleanly above 64% caption band)
+    headline_raw = str(spec.get("title", "KEYS JAM AGAIN!")).upper()
+    lines = [ln.strip() for ln in headline_raw.split("\n") if ln.strip()]
+    if len(lines) == 1 and len(lines[0]) > 16:
+        words = lines[0].split()
+        mid = max(1, len(words) // 2)
+        lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+    fh = _font("arialbd.ttf", 76 if len(lines) == 1 else 64)
+    hy = 278 if len(lines) == 1 else 258
+    for li, ln in enumerate(lines[:2]):
+        d.text((w // 2, hy + li * 74), ln, fill=ink, font=fh, anchor="mm")
+
+    sub_y = 352 if len(lines) == 1 else 402
+    sub = str(spec.get("subtitle", "")).upper()
+    if sub:
+        d.rectangle([64, sub_y - 26, w - 64, sub_y + 26], fill=ink)
+        d.text((w // 2, sub_y), sub, fill=(248, 240, 220), font=_font("arialbd.ttf", 30), anchor="mm")
+
+    # Central engraved callout box (ends before y=735 so 64%-79% caption band stays clear)
+    box_y0 = sub_y + 46
+    box_y1 = 710
+    d.rectangle([68, box_y0, w - 68, box_y1], fill=(246, 238, 214), outline=ink, width=5)
+    big_val = str(spec.get("big_value", "TYPEWRITER")).upper()
+    cap_top = str(spec.get("caption_top", "")).upper()
+    stamp = str(spec.get("stamp", "")).upper()
+    big_x = w // 2 - (115 if stamp else 0)
+    d.text((big_x, (box_y0 + box_y1) // 2 - 22), big_val, fill=acc2, font=_font("arialbd.ttf", 72 if len(big_val) <= 10 else 54), anchor="mm")
+    if cap_top:
+        d.text((w // 2, box_y1 - 46), cap_top, fill=ink, font=_font("arialbd.ttf", 34), anchor="mm")
+
+    # Angled rubber-stamp badge cleanly positioned on right side of inset box
+    if stamp:
+        st_img = Image.new("RGBA", (380, 128), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(st_img)
+        sd.rounded_rectangle([8, 8, 372, 120], radius=14, outline=(acc[0], acc[1], acc[2], 235), width=9, fill=(248, 236, 212, 225))
+        sd.text((190, 64), stamp, fill=(acc[0], acc[1], acc[2], 240), font=_font("arialbd.ttf", 46 if len(stamp) <= 10 else 34), anchor="mm")
+        rot_st = st_img.rotate(10, expand=True, resample=Image.Resampling.BICUBIC)
+        img.paste(rot_st, (w - rot_st.width - 78, box_y0 + 18), rot_st)
+
+    # Low-contrast faux newsprint columns in lower half (safe for white captions!)
+    col_x = [(70, 355), (385, 640), (670, w - 70)]
+    for cx0, cx1 in col_x:
+        for ry in range(750, h - 135, 30):
+            d.rectangle([cx0, ry, cx1 - ((ry * 7) % 45), ry + 12], fill=(198, 186, 158))
+
+    footer = str(spec.get("footer", "")).upper()
+    if footer:
+        d.line([54, h - 108, w - 54, h - 108], fill=ink, width=4)
+        d.text((w // 2, h - 68), footer, fill=ink, font=_font("arialbd.ttf", 32), anchor="mm")
+
+    return img
+
+
+def _draw_stamped_plaque(spec: dict) -> Image.Image:
+    """Procedural stamped brass/bronze plaque with corner rivets, double border & embossed lettering."""
+    w = int(spec.get("width", 1024))
+    h = int(spec.get("height", 1250))
+    pal_name = spec.get("palette", "brass")
+    if pal_name == "navy":
+        bg, rim, ink, acc, rivet = (44, 62, 92), (196, 174, 114), (242, 234, 206), (240, 188, 74), (218, 198, 138)
+    else:
+        bg, rim, ink, acc, rivet = (198, 156, 72), (56, 40, 20), (30, 22, 12), (154, 28, 22), (236, 206, 126)
+
+    img = Image.new("RGB", (w, h), bg)
+    d = ImageDraw.Draw(img)
+
+    # Brushed horizontal metallic sheen lines
+    for yy in range(0, h, 4):
+        delta = ((yy * 17) % 11) - 5
+        c = tuple(max(0, min(255, ch + delta)) for ch in bg)
+        d.line([0, yy, w, yy], fill=c, width=2)
+
+    # Outer beveled plate & engraved inner border
+    d.rectangle([22, 22, w - 22, h - 22], outline=rim, width=14)
+    d.rectangle([50, 50, w - 50, h - 50], outline=ink, width=5)
+
+    # 4 corner brass rivets
+    for rx, ry in ((78, 78), (w - 78, 78), (78, h - 78), (w - 78, h - 78)):
+        d.ellipse([rx - 22, ry - 22, rx + 22, ry + 22], fill=rivet, outline=ink, width=5)
+        d.line([rx - 14, ry - 6, rx + 14, ry + 6], fill=ink, width=4)
+
+    title = str(spec.get("title", "U.S. PATENT")).upper()
+    subtitle = str(spec.get("subtitle", "")).upper()
+    big_val = str(spec.get("big_value", "1873")).upper()
+    cap_top = str(spec.get("caption_top", "")).upper()
+    stamp = str(spec.get("stamp", "")).upper()
+    footer = str(spec.get("footer", "")).upper()
+
+    d.text((w // 2, 145), title, fill=ink, font=_font("arialbd.ttf", 64 if len(title) <= 16 else 50), anchor="mm")
+    d.line([110, 205, w - 110, 205], fill=ink, width=5)
+    if subtitle:
+        d.text((w // 2, 255), subtitle, fill=acc, font=_font("arialbd.ttf", 38), anchor="mm")
+
+    # Central stamped nameplate recess
+    d.rounded_rectangle([95, 315, w - 95, 685], radius=22, fill=(bg[0] - 18, bg[1] - 16, max(0, bg[2] - 12)), outline=ink, width=6)
+    d.text((w // 2, 465), big_val, fill=ink, font=_font("arialbd.ttf", 104 if len(big_val) <= 12 else 74), anchor="mm")
+    if cap_top:
+        d.text((w // 2, 600), cap_top, fill=acc, font=_font("arialbd.ttf", 40), anchor="mm")
+
+    if stamp:
+        badge_hw = max(220, min(380, len(stamp) * 16 + 44))
+        d.rounded_rectangle([w // 2 - badge_hw, 725, w // 2 + badge_hw, 810], radius=12, outline=acc, width=6)
+        d.text((w // 2, 767), stamp, fill=acc, font=_font("arialbd.ttf", 38 if len(stamp) <= 18 else 32), anchor="mm")
+
+    if footer:
+        d.line([110, h - 155, w - 110, h - 155], fill=ink, width=4)
+        d.text((w // 2, h - 102), footer, fill=ink, font=_font("arialbd.ttf", 36), anchor="mm")
+
+    return img
+
+
 def render_diagram(spec: dict, out_path: Path) -> None:
+    layout = spec.get("layout", "spec_card")
+    if layout == "newspaper_headline":
+        img = _draw_newspaper_headline(spec)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(str(out_path))
+        return
+    if layout == "stamped_plaque":
+        img = _draw_stamped_plaque(spec)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(str(out_path))
+        return
+
     img, d, P = _base_card(spec)
     w, h = img.size
-    layout = spec.get("layout", "spec_card")
     ink, acc, acc2 = P["ink"], P["accent"], P["accent2"]
 
     if layout == "spec_card":
@@ -314,6 +467,51 @@ def render_diagram(spec: dict, out_path: Path) -> None:
         d.rectangle([80, 770, w - 80, 1055], fill=(20, 52, 92), outline=ink, width=4)
         for wy in (835, 905, 975):
             d.line([110, wy, w - 110, wy], fill=(38, 84, 138), width=3)
+
+    elif layout == "typebar_jam":
+        # Circular typebar basket comparison: adjacent keys collide vs opposite-side QWERTY keys clear!
+        mode = spec.get("mode", "split")
+        big_val = str(spec.get("big_value", "OPPOSITE SIDES = ZERO JAM"))
+        d.text((w // 2, 295), big_val.upper(), fill=acc, font=_font("arialbd.ttf", 52), anchor="mm")
+
+        def _draw_basket(cx: int, cy: int, rad: int, jammed: bool, label: str, keys_txt: str) -> None:
+            d.text((cx, cy - rad - 42), label, fill=acc if jammed else acc2, font=_font("arialbd.ttf", 36), anchor="mm")
+            d.arc([cx - rad, cy - rad, cx + rad, cy + rad], start=10, end=170, fill=ink, width=7)
+            # Platen roller & strike point at top center
+            d.rounded_rectangle([cx - 95, cy - rad - 12, cx + 95, cy - rad + 26], radius=12, fill=(52, 56, 64), outline=ink, width=4)
+            strike = (cx, cy - rad + 24)
+            # Typebar arms swinging up
+            if jammed:
+                ang_a, ang_b = math.radians(102), math.radians(82)
+                for ang, lbl, col_l in ((ang_a, "T", acc), (ang_b, "H", acc)):
+                    p0 = (cx + int(rad * 0.92 * math.cos(ang)), cy + int(rad * 0.92 * math.sin(ang)))
+                    p1 = (cx + int((rad * 0.25) * math.cos(ang)) - 8, cy - int((rad * 0.28) * math.sin(ang)))
+                    d.line([p0, p1], fill=col_l, width=10)
+                    d.ellipse([p0[0] - 24, p0[1] - 24, p0[0] + 24, p0[1] + 24], fill=P["bg2"], outline=ink, width=4)
+                    d.text(p0, lbl, fill=ink, font=_font("arialbd.ttf", 30), anchor="mm")
+                # Red collision burst
+                mx, my = cx, cy - int(rad * 0.28)
+                for deg in range(0, 360, 45):
+                    ra = math.radians(deg)
+                    d.line([mx, my, mx + int(34 * math.cos(ra)), my + int(34 * math.sin(ra))], fill=acc, width=6)
+                d.text((cx, cy + rad + 42), keys_txt, fill=acc, font=_font("arialbd.ttf", 32), anchor="mm")
+            else:
+                for ang, lbl in ((math.radians(150), "T"), (math.radians(30), "H")):
+                    p0 = (cx + int(rad * 0.92 * math.cos(ang)), cy + int(rad * 0.92 * math.sin(ang)))
+                    d.line([p0, strike], fill=acc2, width=10)
+                    d.ellipse([p0[0] - 24, p0[1] - 24, p0[0] + 24, p0[1] + 24], fill=P["bg2"], outline=ink, width=4)
+                    d.text(p0, lbl, fill=ink, font=_font("arialbd.ttf", 30), anchor="mm")
+                d.ellipse([strike[0] - 14, strike[1] - 14, strike[0] + 14, strike[1] + 14], fill=acc2, outline=ink, width=3)
+                d.text((cx, cy + rad + 42), keys_txt, fill=acc2, font=_font("arialbd.ttf", 32), anchor="mm")
+
+        if mode == "jam":
+            _draw_basket(w // 2, 515, 165, True, "ALPHABETICAL NEIGHBORS", "T + H COLLIDE MID-STROKE")
+        elif mode == "qwerty":
+            _draw_basket(w // 2, 515, 165, False, "QWERTY OPPOSITE SIDES", "CLEAR PATH TO PLATEN")
+        else:
+            d.line([w // 2, 340, w // 2, 740], fill=ink, width=5)
+            _draw_basket(w // 4, 515, 130, True, "A-B-C LAYOUT", "ARMS JAM!")
+            _draw_basket(3 * w // 4, 515, 130, False, "QWERTY", "NO COLLISION!")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out_path))

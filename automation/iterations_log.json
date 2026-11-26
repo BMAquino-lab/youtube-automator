@@ -151,6 +151,27 @@
         "v6_multi_prop_hand_swaps"
       ],
       "recorded_at": "2026-11-26T03:51:56.437431+00:00"
+    },
+    {
+      "iteration": 8,
+      "episode_id": "ep10_backward_typewriter_keys",
+      "title": "Why Keyboard Letters Are Scrambled Out Of Order",
+      "resolution": "720x1280",
+      "fps": 24,
+      "samples": 8,
+      "total_shots": 45,
+      "unique_clips": 39,
+      "approx_render_wall_min": 31.3,
+      "duration_s": 69.0,
+      "wpm": 205,
+      "word_recall_pct": 89,
+      "hook_luma": 86,
+      "qa_gates_passed": "20/20",
+      "voice_engine": "edge_tts",
+      "upgrades_applied": [
+        "v7_dynamic_headline_cards"
+      ],
+      "recorded_at": "2026-11-26T08:53:19.876922+00:00"
     }
   ],
   "next_iteration_upgrades": [
@@ -194,7 +215,7 @@
       "id": "v7_dynamic_headline_cards",
       "title": "Animated In-World Crinkled Newspaper & Stamped Telegram Props",
       "details": "Generate procedural period-authentic newspapers and stamped brass plaques tilted in 3D space with dynamic rack focus",
-      "status": "pending"
+      "status": "done (iter 8)"
     },
     {
       "id": "v8_sound_visual_sync_hooks",

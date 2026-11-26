@@ -35,6 +35,7 @@ def _activate_set(
     active_name: str,
     actors: dict[str, K.StickmanActor],
     shared_props: dict[str, bpy.types.Object] | None = None,
+    headline_card: dict | None = None,
 ) -> dict:
     for sname, meta in sets_meta.items():
         hide = sname != active_name
@@ -61,21 +62,64 @@ def _activate_set(
             for ch in sp.children:
                 ch.hide_render = True
                 ch.hide_viewport = True
+
+    if headline_card is not None:
+        hroot = headline_card["root"]
+        K.clear_object_anim(hroot)
+        hroot.hide_render = True
+        hroot.hide_viewport = True
+        for ch in hroot.children:
+            ch.hide_render = True
+            ch.hide_viewport = True
+
     return active_meta
 
 
 def _animate_prop_spec(meta: dict, prop_spec: dict, n_frames: int, ep_dir: Path) -> None:
     """Apply set-specific hero prop mode or swap diagram card texture on diagram_plane."""
-    # Swap diagram image if present in spec
+    # Swap diagram image or switch to v7 3D tilted crinkled newspaper / stamped brass plaque
     diag_file = prop_spec.get("diagram_texture")
+    card_style = prop_spec.get("card_style", "easel")
     if diag_file and "diagram_plane" in meta:
         tex_p = ep_dir / "textures" / diag_file
         if tex_p.exists():
+            tilted = meta.get("tilted_card")
             plane = meta["diagram_plane"]
-            mat_name = f"DiagTex_{Path(diag_file).stem}"
-            mat = K.make_image_mat(mat_name, tex_p, emission=0.32, roughness=0.50)
-            plane.data.materials.clear()
-            plane.data.materials.append(mat)
+            frame_box = meta.get("diagram_frame")
+            if tilted and card_style in ("newspaper", "plaque", "brass_plaque", "telegram"):
+                plane.hide_render = True
+                plane.hide_viewport = True
+                if frame_box is not None:
+                    frame_box.hide_render = True
+                    frame_box.hide_viewport = True
+                K.animate_dynamic_headline_card(
+                    tilted,
+                    tex_p,
+                    1,
+                    n_frames,
+                    style=card_style,
+                    loc0=tuple(prop_spec.get("card_loc0", (0.0, 0.10, 1.54))),
+                    loc1=tuple(prop_spec.get("card_loc1", (0.0, 0.14, 1.58))),
+                    rot_deg0=tuple(prop_spec.get("card_rot0", (-8.0, -14.0, -6.0))),
+                    rot_deg1=tuple(prop_spec.get("card_rot1", (-3.0, 10.0, 4.0))),
+                    scale=float(prop_spec.get("card_scale", 1.02)),
+                )
+            else:
+                if tilted:
+                    tilted["root"].hide_render = True
+                    tilted["root"].hide_viewport = True
+                    for ch in tilted["root"].children:
+                        ch.hide_render = True
+                        ch.hide_viewport = True
+                plane.hide_render = False
+                plane.hide_viewport = False
+                if frame_box is not None:
+                    frame_box.hide_render = False
+                    frame_box.hide_viewport = False
+                mat_name = f"DiagTex_{Path(diag_file).stem}"
+                mat = K.make_image_mat(mat_name, tex_p, emission=0.32, roughness=0.50)
+                plane.data.materials.clear()
+                plane.data.materials.append(mat)
 
     # Interactive tank buoyancy / inflation animation
     tank = meta.get("hero_tank")
@@ -437,6 +481,51 @@ def _animate_prop_spec(meta: dict, prop_spec: dict, n_frames: int, ep_dir: Path)
             rl.rotation_euler = (math.radians(90.0), math.radians(dir_s * 360.0), 0.0)
             rl.keyframe_insert(data_path="rotation_euler", frame=n_frames)
 
+    # Iteration 8: Mechanical Typewriter Typebar Hammers (jam vs smooth opposite-side typing)
+    typebars = meta.get("typebars")
+    if typebars:
+        tb_mode = prop_spec.get("typebar_mode", "type_smooth")
+        jam_spark = meta.get("jam_spark")
+        for ti, piv in enumerate(typebars):
+            K.clear_object_anim(piv)
+            ang_deg = -68.0 + ti * (136.0 / max(1, len(typebars) - 1))
+            rest_rx = math.radians(-62.0)
+            rz = math.radians(-ang_deg * 0.75)
+            piv.rotation_euler = (rest_rx, 0.0, rz)
+            piv.keyframe_insert(data_path="rotation_euler", frame=1)
+
+            if tb_mode == "jam" and ti in (3, 4):
+                hit_f = max(4, int(n_frames * 0.36))
+                piv.rotation_euler = (math.radians(-14.0), math.radians(8.0 if ti == 3 else -8.0), rz * 0.35)
+                piv.keyframe_insert(data_path="rotation_euler", frame=hit_f)
+                piv.rotation_euler = (math.radians(-16.0), math.radians(6.0 if ti == 3 else -6.0), rz * 0.35)
+                piv.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+            elif tb_mode == "type_smooth":
+                # Opposite-side sequential typing strokes (e.g. 0 -> 7 -> 1 -> 6 -> 2 -> 5)
+                order = [0, 7, 1, 6, 2, 5, 3, 4]
+                slot = order.index(ti) if ti in order else ti
+                strike_f = max(3, min(n_frames - 3, int(round(3 + slot * (max(6, n_frames - 6) / len(order))))))
+                piv.rotation_euler = (rest_rx, 0.0, rz)
+                piv.keyframe_insert(data_path="rotation_euler", frame=max(1, strike_f - 2))
+                piv.rotation_euler = (math.radians(-6.0), 0.0, rz * 0.20)
+                piv.keyframe_insert(data_path="rotation_euler", frame=strike_f)
+                piv.rotation_euler = (rest_rx, 0.0, rz)
+                piv.keyframe_insert(data_path="rotation_euler", frame=min(n_frames, strike_f + 3))
+
+        if jam_spark is not None:
+            K.clear_object_anim(jam_spark)
+            show_spark = tb_mode == "jam"
+            jam_spark.hide_render = not show_spark
+            jam_spark.hide_viewport = not show_spark
+            if show_spark:
+                hit_f = max(4, int(n_frames * 0.36))
+                jam_spark.scale = (0.05, 0.05, 0.05)
+                jam_spark.keyframe_insert(data_path="scale", frame=1)
+                jam_spark.scale = (1.35, 1.35, 1.35)
+                jam_spark.keyframe_insert(data_path="scale", frame=hit_f)
+                jam_spark.scale = (0.75, 0.75, 0.75)
+                jam_spark.keyframe_insert(data_path="scale", frame=n_frames)
+
 
 def stage_shot(
     shot_spec: dict,
@@ -446,10 +535,28 @@ def stage_shot(
     sets_meta: dict[str, dict],
     ep_dir: Path,
     shared_props: dict[str, bpy.types.Object] | None = None,
+    headline_card: dict | None = None,
 ) -> None:
-    meta = _activate_set(sets_meta, shot_spec["set"], actors, shared_props=shared_props)
+    meta = _activate_set(sets_meta, shot_spec["set"], actors, shared_props=shared_props, headline_card=headline_card)
     prop_spec = shot_spec.get("props", {})
     _animate_prop_spec(meta, prop_spec, n_frames, ep_dir)
+
+    hc_spec = prop_spec.get("headline_card")
+    if hc_spec and headline_card is not None:
+        tex_p = ep_dir / "textures" / hc_spec["texture"]
+        if tex_p.exists():
+            K.animate_dynamic_headline_card(
+                headline_card,
+                tex_p,
+                1,
+                n_frames,
+                style=hc_spec.get("style", "newspaper"),
+                loc0=tuple(hc_spec.get("loc0", (0.0, 0.65, 1.54))),
+                loc1=tuple(hc_spec.get("loc1", (0.0, 0.65, 1.58))),
+                rot_deg0=tuple(hc_spec.get("rot_deg0", (-10.0, -14.0, -6.0))),
+                rot_deg1=tuple(hc_spec.get("rot_deg1", (-3.0, 8.0, 4.0))),
+                scale=float(hc_spec.get("scale", 0.72)),
+            )
 
     sp_spec = prop_spec.get("shared_prop")
     if sp_spec and shared_props and sp_spec.get("kind") in shared_props:
@@ -604,6 +711,7 @@ def main() -> None:
         kind: K.build_shared_prop(f"Shared_{kind}", kind=kind, col=sp_col)
         for kind in ("classified_briefcase", "manganese_nodule", "salvage_crate")
     }
+    headline_card = K.build_dynamic_headline_card("GlobalHeadlineCard", col=sp_col)
 
     cam = K.ensure_camera("MainCam")
     shots_map: dict[str, dict] = plan["shots"]
@@ -614,7 +722,7 @@ def main() -> None:
         prev_dir = STUDIO_DIR / "previews" / ep_id
         prev_dir.mkdir(parents=True, exist_ok=True)
         check_ids = plan.get("check_shots") or [all_ids[min(len(all_ids) - 1, k)] for k in (0, 2, 6, 11, 16, len(all_ids) - 2)]
-        stage_shot(shots_map[all_ids[0]], durations[all_ids[0]], cam, actors, sets_meta, ep_dir, shared_props=shared_props)
+        stage_shot(shots_map[all_ids[0]], durations[all_ids[0]], cam, actors, sets_meta, ep_dir, shared_props=shared_props, headline_card=headline_card)
         blend_out = ep_dir / f"{ep_id}_blender_scene.blend"
         bpy.ops.wm.save_as_mainfile(filepath=str(blend_out))
         print(f"SAVED BLEND: {blend_out}", flush=True)
@@ -624,7 +732,7 @@ def main() -> None:
         for sid in check_ids:
             t0 = time.time()
             nf = durations[sid]
-            stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props)
+            stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props, headline_card=headline_card)
             scn.frame_start = 1
             scn.frame_end = nf
             scn.frame_set(1)
@@ -649,7 +757,7 @@ def main() -> None:
     for idx, sid in enumerate(todo, 1):
         t0 = time.time()
         nf = durations[sid]
-        stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props)
+        stage_shot(shots_map[sid], nf, cam, actors, sets_meta, ep_dir, shared_props=shared_props, headline_card=headline_card)
         scn.frame_start = 1
         scn.frame_end = nf
         out_mp4 = clips_dir / f"{sid}.mp4"

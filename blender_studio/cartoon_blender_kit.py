@@ -431,6 +431,67 @@ def add_uv_plane(
     return obj
 
 
+def add_crinkled_uv_plane(
+    name: str,
+    width: float,
+    height: float,
+    loc: tuple[float, float, float],
+    mat: bpy.types.Material,
+    col: bpy.types.Collection | None = None,
+    rot_deg: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    crinkle: float = 0.032,
+    nx: int = 14,
+    ny: int = 16,
+) -> bpy.types.Object:
+    """Create a subdivided +Y-facing crinkled paper quad with smooth 3D folds and clean 0..1 UVs."""
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    hw, hh = width * 0.5, height * 0.5
+
+    grid: list[list[bmesh.types.BMVert]] = []
+    for iy in range(ny + 1):
+        v_frac = iy / ny
+        z = -hh + v_frac * height
+        row: list[bmesh.types.BMVert] = []
+        for ix in range(nx + 1):
+            u_frac = ix / nx
+            # Facing +Y: u=0 at +hw (screen left), u=1 at -hw (screen right)
+            x = hw - u_frac * width
+            fold_wave = math.sin(u_frac * math.pi * 2.4 + 0.35) * math.cos(v_frac * math.pi * 3.0)
+            crease = math.exp(-((v_frac - 0.5) * 9.0) ** 2) * 0.45
+            corner_curl = ((abs(u_frac - 0.5) * 2.0) ** 2) * ((abs(v_frac - 0.5) * 2.0) ** 2) * 0.65
+            y = crinkle * (0.60 * fold_wave + crease + corner_curl)
+            row.append(bm.verts.new((x, y, z)))
+        grid.append(row)
+
+    for iy in range(ny):
+        for ix in range(nx):
+            v0 = grid[iy][ix]
+            v1 = grid[iy][ix + 1]
+            v2 = grid[iy + 1][ix + 1]
+            v3 = grid[iy + 1][ix]
+            face = bm.faces.new((v0, v1, v2, v3))
+            face.smooth = True
+            uvs = (
+                (ix / nx, iy / ny),
+                ((ix + 1) / nx, iy / ny),
+                ((ix + 1) / nx, (iy + 1) / ny),
+                (ix / nx, (iy + 1) / ny),
+            )
+            for loop, coords in zip(face.loops, uvs):
+                loop[uv].uv = coords
+
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = loc
+    obj.rotation_euler = tuple(math.radians(a) for a in rot_deg)
+    obj.data.materials.append(mat)
+    link_to_collection(obj, col)
+    return obj
+
+
 def add_warm_lantern(
     name: str,
     loc: tuple[float, float, float],
@@ -2919,6 +2980,118 @@ def animate_shared_prop(
         root.rotation_euler = tuple(math.radians(a) for a in rot_deg1)
         root.keyframe_insert(data_path="location", frame=f1)
         root.keyframe_insert(data_path="rotation_euler", frame=f1)
+
+    if root.animation_data and root.animation_data.action:
+        for fc in root.animation_data.action.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "BACK"
+                if hasattr(kp, "easing"):
+                    kp.easing = "EASE_OUT"
+
+
+def build_dynamic_headline_card(
+    name: str = "DynamicHeadlineCard",
+    col: bpy.types.Collection | None = None,
+) -> dict:
+    """Build v7 reusable 3D tilted crinkled newspaper + stamped brass plaque prop rig."""
+    root = bpy.data.objects.new(f"{name}_Root", None)
+    root.empty_display_type = "PLAIN_AXES"
+    root.empty_display_size = 0.16
+    link_to_collection(root, col)
+
+    m_paper = make_toon_mat(f"{name}_Paper", "#EEE2C4", emission_lift=0.25, roughness=0.62)
+    m_brass = make_toon_mat(f"{name}_BrassRim", "#C89836", emission_lift=0.18, roughness=0.32)
+    m_rivet = make_toon_mat(f"{name}_Rivet", "#E4BA52", emission_lift=0.22, roughness=0.28)
+
+    paper_plane = add_crinkled_uv_plane(f"{name}_CrinkledPaper", 1.78, 2.18, (0.0, 0.0, 0.0), m_paper, col, crinkle=0.032)
+    if hasattr(paper_plane, "visible_shadow"):
+        paper_plane.visible_shadow = False
+    paper_plane.parent = root
+
+    plaque_backing = add_box(f"{name}_PlaqueBacking", (1.92, 0.07, 2.32), (0.0, -0.04, 0.0), m_brass, col, bevel=0.024, outline=0.018)
+    plaque_backing.parent = root
+
+    plaque_plane = add_uv_plane(f"{name}_PlaqueFace", 1.78, 2.18, (0.0, 0.005, 0.0), m_paper, col)
+    if hasattr(plaque_plane, "visible_shadow"):
+        plaque_plane.visible_shadow = False
+    plaque_plane.parent = root
+
+    rivets: list[bpy.types.Object] = []
+    for rx, rz in ((-0.82, -1.02), (0.82, -1.02), (-0.82, 1.02), (0.82, 1.02)):
+        rv = add_sphere(f"{name}_Rivet_{rx}_{rz}", 0.038, (rx, 0.015, rz), m_rivet, col, segments=10, rings=6, outline=0.008)
+        rv.parent = root
+        rivets.append(rv)
+
+    return {
+        "root": root,
+        "paper_plane": paper_plane,
+        "plaque_plane": plaque_plane,
+        "plaque_backing": plaque_backing,
+        "rivets": rivets,
+    }
+
+
+def animate_dynamic_headline_card(
+    card: dict,
+    tex_path: Path,
+    f0: int,
+    f1: int,
+    *,
+    style: str = "newspaper",
+    loc0: tuple[float, float, float] = (0.0, 0.65, 1.56),
+    loc1: tuple[float, float, float] = (0.0, 0.65, 1.60),
+    rot_deg0: tuple[float, float, float] = (-10.0, -14.0, -6.0),
+    rot_deg1: tuple[float, float, float] = (-4.0, 8.0, 4.0),
+    scale: float = 0.85,
+) -> None:
+    """Show, apply texture, and animate a 3D tilted newspaper or stamped brass plaque card."""
+    root: bpy.types.Object = card["root"]
+    clear_object_anim(root)
+    root.hide_render = False
+    root.hide_viewport = False
+
+    is_plaque = style in ("plaque", "brass_plaque", "telegram")
+    mat = make_image_mat(f"HeadlineTex_{tex_path.stem}_{style}", tex_path, emission=0.34, roughness=0.45 if is_plaque else 0.58)
+
+    card["paper_plane"].hide_render = is_plaque
+    card["paper_plane"].hide_viewport = is_plaque
+    card["plaque_plane"].hide_render = not is_plaque
+    card["plaque_plane"].hide_viewport = not is_plaque
+    card["plaque_backing"].hide_render = not is_plaque
+    card["plaque_backing"].hide_viewport = not is_plaque
+    for rv in card["rivets"]:
+        rv.hide_render = not is_plaque
+        rv.hide_viewport = not is_plaque
+
+    target_plane = card["plaque_plane"] if is_plaque else card["paper_plane"]
+    target_plane.data.materials.clear()
+    target_plane.data.materials.append(mat)
+
+    mid = max(f0 + 2, (f0 + f1) // 2)
+    root.location = loc0
+    root.rotation_euler = tuple(math.radians(a) for a in rot_deg0)
+    root.scale = (scale * 0.94, scale * 0.94, scale * 0.94)
+    root.keyframe_insert(data_path="location", frame=f0)
+    root.keyframe_insert(data_path="rotation_euler", frame=f0)
+    root.keyframe_insert(data_path="scale", frame=f0)
+
+    root.location = (
+        (loc0[0] + loc1[0]) * 0.5,
+        (loc0[1] + loc1[1]) * 0.5,
+        (loc0[2] + loc1[2]) * 0.5 + 0.05,
+    )
+    root.rotation_euler = tuple(math.radians((a + b) * 0.5) for a, b in zip(rot_deg0, rot_deg1))
+    root.scale = (scale * 1.03, scale * 1.03, scale * 1.03)
+    root.keyframe_insert(data_path="location", frame=mid)
+    root.keyframe_insert(data_path="rotation_euler", frame=mid)
+    root.keyframe_insert(data_path="scale", frame=mid)
+
+    root.location = loc1
+    root.rotation_euler = tuple(math.radians(a) for a in rot_deg1)
+    root.scale = (scale, scale, scale)
+    root.keyframe_insert(data_path="location", frame=f1)
+    root.keyframe_insert(data_path="rotation_euler", frame=f1)
+    root.keyframe_insert(data_path="scale", frame=f1)
 
     if root.animation_data and root.animation_data.action:
         for fc in root.animation_data.action.fcurves:

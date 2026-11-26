@@ -475,6 +475,11 @@ def build_diagram_backdrop_set(col: bpy.types.Collection, frame_end: int = 60) -
     if hasattr(plane, "visible_shadow"):
         plane.visible_shadow = False
 
+    # v7: In-world 3D tilted crinkled newspaper / stamped brass plaque rig inside diagram_stage
+    tilted_card = K.build_dynamic_headline_card("Diag_TiltedCard", col=col)
+    tilted_card["root"].hide_render = True
+    tilted_card["root"].hide_viewport = True
+
     # Tactile miniature drafting desk accents in corners (never blocking the chart!)
     K.add_box("Diag_DeskFolderL", (0.75, 0.55, 0.08), (-1.45, 0.55, 0.04), m_red, col, bevel=0.015, rot_deg=(0.0, 0.0, 18.0), outline=0.014)
     K.add_cylinder("Diag_BrassWeight", 0.14, 0.16, (1.42, 0.48, 0.08), m_brass, col, outline=0.014)
@@ -484,6 +489,7 @@ def build_diagram_backdrop_set(col: bpy.types.Collection, frame_end: int = 60) -
         "sky": ("#2C3A4E", "#526682", 0.85),
         "diagram_plane": plane,
         "diagram_frame": frame_box,
+        "tilted_card": tilted_card,
     }
 
 
@@ -1457,6 +1463,242 @@ def build_cia_briefing_set(col: bpy.types.Collection, frame_end: int = 60) -> di
     }
 
 
+# --------------------------------------------------------------------------- 19-21. 1870s TYPEWRITER & QWERTY SETS (Iteration 8)
+def _build_mechanical_typewriter(
+    name: str,
+    loc: tuple[float, float, float],
+    col: bpy.types.Collection,
+    *,
+    scale: float = 1.0,
+    rot_z_deg: float = 0.0,
+    body_hex: str = "#1E222A",
+) -> tuple[bpy.types.Object, list[bpy.types.Object], bpy.types.Object]:
+    """Stylized 1870s Sholes & Glidden / Remington No.1 typewriter with articulated typebar hammers & paper platen."""
+    root = _make_empty(f"{name}_Root", loc, col)
+    root.rotation_euler = (0.0, 0.0, math.radians(rot_z_deg))
+    root.scale = (scale, scale, scale)
+
+    m_iron = K.make_toon_mat(f"{name}_CastIron", body_hex, emission_lift=0.08, roughness=0.40)
+    m_gold = K.make_toon_mat(f"{name}_GoldTrim", "#E0B23C", emission_lift=0.22, roughness=0.30)
+    m_steel = K.make_pbr_mat(f"{name}_TypebarSteel", "Metal", "#B6C0CC", uv_scale=2.0, emission_lift=0.16)
+    m_ivory = K.make_toon_mat(f"{name}_KeyIvory", "#F6EFE0", emission_lift=0.28, roughness=0.55)
+    m_rubber = K.make_toon_mat(f"{name}_PlatenRubber", "#26282E", emission_lift=0.06, roughness=0.72)
+    m_paper = K.make_toon_mat(f"{name}_TypePaper", "#FAF4E4", emission_lift=0.30, roughness=0.65)
+    m_spark = K.make_emissive_mat(f"{name}_JamSpark", "#FF5A2A", strength=4.5)
+
+    parts: list[bpy.types.Object] = [
+        K.add_box(f"{name}_BaseChassis", (1.28, 1.12, 0.34), (0.0, 0.0, 0.17), m_iron, col, bevel=0.04, outline=0.020),
+        K.add_box(f"{name}_GoldTrimBand", (1.31, 1.15, 0.06), (0.0, 0.0, 0.25), m_gold, col, bevel=0.01),
+        K.add_box(f"{name}_UpperHood", (1.20, 0.62, 0.32), (0.0, -0.22, 0.48), m_iron, col, bevel=0.04, outline=0.018),
+        # Stepped keybank apron
+        K.add_box(f"{name}_KeyBank", (1.16, 0.56, 0.16), (0.0, 0.32, 0.20), m_iron, col, bevel=0.03, rot_deg=(16.0, 0.0, 0.0), outline=0.016),
+    ]
+
+    # 3 staggered rows of keycaps
+    for r_idx, (ry, rz, n_keys) in enumerate(((0.48, 0.24, 7), (0.34, 0.29, 7), (0.20, 0.34, 6))):
+        for k_idx in range(n_keys):
+            kx = (k_idx - (n_keys - 1) * 0.5) * 0.145
+            parts.append(K.add_cylinder(f"{name}_KeyStem_{r_idx}_{k_idx}", 0.016, 0.10, (kx, ry, rz - 0.03), m_steel, col))
+            parts.append(K.add_cylinder(f"{name}_KeyCap_{r_idx}_{k_idx}", 0.048, 0.032, (kx, ry, rz + 0.02), m_ivory if (r_idx + k_idx) % 2 == 0 else m_gold, col, outline=0.010))
+
+    # Open circular typebar basket & platen carriage roller above
+    parts.append(K.add_cylinder(f"{name}_PlatenRoller", 0.11, 1.32, (0.0, -0.24, 0.78), m_rubber, col, rot_deg=(0.0, 90.0, 0.0), outline=0.016))
+    for kx in (-0.70, 0.70):
+        parts.append(K.add_cylinder(f"{name}_PlatenKnob_{kx}", 0.08, 0.10, (kx, -0.24, 0.78), m_gold, col, rot_deg=(0.0, 90.0, 0.0), outline=0.012))
+    paper = K.add_box(f"{name}_PaperSheet", (0.86, 0.025, 0.68), (0.0, -0.26, 1.06), m_paper, col, bevel=0.005, rot_deg=(-14.0, 0.0, 0.0), outline=0.012)
+    parts.append(paper)
+    parts.append(K.add_sphere(f"{name}_CarriageBell", 0.075, (-0.56, -0.24, 0.92), m_gold, col, outline=0.012))
+
+    # 8 articulated typebar hammer arms arranged around basket rim (pivots at bottom so swinging up strikes platen!)
+    typebars: list[bpy.types.Object] = []
+    for ti in range(8):
+        ang_deg = -68.0 + ti * (136.0 / 7.0)
+        ang = math.radians(ang_deg)
+        bx = math.sin(ang) * 0.36
+        by = -0.02 + math.cos(ang) * 0.16
+        piv = _make_empty(f"{name}_TypebarPivot_{ti}", (bx, by, 0.38), col)
+        piv.rotation_euler = (math.radians(-62.0), 0.0, math.radians(-ang_deg * 0.75))
+        arm = K.add_box(f"{name}_TypebarArm_{ti}", (0.030, 0.030, 0.36), (0.0, 0.0, 0.18), m_steel, col, bevel=0.006, outline=0.010)
+        slug = K.add_box(f"{name}_TypeSlug_{ti}", (0.060, 0.048, 0.068), (0.0, 0.0, 0.36), m_gold if ti in (3, 4) else m_steel, col, bevel=0.008, outline=0.010)
+        arm.parent = piv
+        slug.parent = piv
+        piv.parent = root
+        typebars.append(piv)
+
+    jam_spark = K.add_sphere(f"{name}_JamSparkOrb", 0.09, (0.0, -0.14, 0.64), m_spark, col, segments=10, rings=8)
+    jam_spark.hide_render = True
+    jam_spark.hide_viewport = True
+    jam_spark.parent = root
+
+    for p in parts:
+        p.parent = root
+    return root, typebars, jam_spark
+
+
+def build_typewriter_workshop_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """1868 Milwaukee inventor workshop with oak workbench, prototype mechanical typewriter, patent sketches & warm lamp."""
+    K.add_cinematic_3point_rig(
+        "TypeWorkshopRig",
+        col,
+        key_loc=(1.8, 4.0, 4.4),
+        fill_loc=(-2.8, 4.2, 2.8),
+        rim_loc=(0.0, -2.4, 3.4),
+        key_color="#FFF3D9",
+        fill_color="#B8D4F6",
+        rim_color="#FFE09A",
+        key_energy=245.0,
+        fill_energy=110.0,
+        rim_energy=165.0,
+    )
+
+    m_floor = K.make_pbr_mat("TW_FloorWood", "WoodPlanks", "#9B7048", uv_scale=4.0, emission_lift=0.14)
+    m_wall = K.make_pbr_mat("TW_WallBrick", "Brick", "#C89A74", uv_scale=3.4, emission_lift=0.18)
+    m_bench = K.make_pbr_mat("TW_OakBench", "Wood", "#7A5232", uv_scale=3.0, emission_lift=0.14)
+    m_paper = K.make_toon_mat("TW_PatentPaper", "#F4EAD0", emission_lift=0.28, roughness=0.62)
+    m_brass = K.make_toon_mat("TW_Brass", "#DFB03A", emission_lift=0.24, roughness=0.30)
+    m_green = K.make_toon_mat("TW_BankerShade", "#286C46", emission_lift=0.24, roughness=0.35)
+
+    K.add_box("TW_Floor", (14.0, 12.0, 0.4), (0.0, 0.0, -0.20), m_floor, col)
+    K.add_box("TW_BackWall", (14.0, 0.5, 6.6), (0.0, -3.4, 3.2), m_wall, col)
+    K.add_box("TW_SideWallL", (0.5, 10.0, 6.6), (-4.8, 0.5, 3.2), m_wall, col)
+    K.add_box("TW_SideWallR", (0.5, 10.0, 6.6), (4.8, 0.5, 3.2), m_wall, col)
+
+    # Oak inventor's workbench
+    K.add_box("TW_BenchTop", (3.6, 1.9, 0.16), (0.0, -0.35, 1.00), m_bench, col, bevel=0.03, outline=0.022)
+    for lx in (-1.55, 1.55):
+        for ly in (-1.10, 0.40):
+            K.add_cylinder(f"TW_BenchLeg_{lx}_{ly}", 0.09, 0.94, (lx, ly, 0.47), m_bench, col, outline=0.014)
+
+    # Central articulated mechanical typewriter
+    tw_root, typebars, jam_spark = _build_mechanical_typewriter("TW_HeroMachine", (0.0, -0.32, 1.08), col, scale=1.08, rot_z_deg=6.0)
+
+    # Pinned patent blueprints & crumpled prototype notes on back wall and desk
+    K.add_box("TW_WallBoard", (3.2, 0.08, 1.95), (0.0, -3.12, 2.75), m_bench, col, bevel=0.02, outline=0.016)
+    K.add_box("TW_WallSketch", (2.85, 0.04, 1.65), (0.0, -3.07, 2.75), m_paper, col)
+    K.add_box("TW_DeskNoteL", (0.68, 0.52, 0.025), (-1.22, -0.20, 1.10), m_paper, col, rot_deg=(0.0, 0.0, 18.0), outline=0.010)
+    K.add_cylinder("TW_BrassLoupe", 0.14, 0.08, (-1.18, 0.25, 1.12), m_brass, col, outline=0.012)
+
+    # Banker lamp on right corner
+    K.add_cylinder("TW_LampBase", 0.18, 0.08, (1.35, -0.82, 1.12), m_brass, col, outline=0.012)
+    K.add_cylinder("TW_LampStem", 0.032, 0.46, (1.35, -0.82, 1.38), m_brass, col, outline=0.010)
+    K.add_box("TW_LampShade", (0.44, 0.24, 0.14), (1.24, -0.82, 1.62), m_green, col, bevel=0.02, rot_deg=(0.0, -14.0, 0.0), outline=0.014)
+    K.add_warm_lantern("TW_WarmLantern", (1.24, -0.82, 1.50), col, color_hex="#FFE2A4", energy=72.0, radius=0.14)
+
+    return {
+        "col": col,
+        "sky": ("#30261E", "#5A4634", 0.65),
+        "typewriter_root": tw_root,
+        "typebars": typebars,
+        "jam_spark": jam_spark,
+        "fg_framing": [
+            K.add_foreground_framing_prop("TW_FgEdgeL", "drafting_edge", (1.65, 2.38, 0.45), col, scale=0.72, rot_deg=(0.0, 0.0, 14.0)),
+            K.add_foreground_framing_prop("TW_FgRailR", "railing", (-1.70, 2.45, 0.12), col, scale=0.68, rot_deg=(0.0, 0.0, -12.0)),
+        ],
+    }
+
+
+def build_remington_factory_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """1873 E. Remington & Sons factory floor with steel trusses, shipping crates, assembly line & showroom typewriter."""
+    K.add_cinematic_3point_rig(
+        "RemingtonRig",
+        col,
+        key_loc=(2.0, 4.4, 4.8),
+        fill_loc=(-3.0, 4.4, 3.0),
+        rim_loc=(0.0, -2.5, 3.8),
+        key_color="#FFF6E2",
+        fill_color="#BDD8F8",
+        rim_color="#FFE29E",
+        key_energy=255.0,
+        fill_energy=115.0,
+        rim_energy=175.0,
+    )
+
+    m_floor = K.make_pbr_mat("Rem_FloorSlate", "Slate", "#6A7078", uv_scale=4.5, emission_lift=0.14)
+    m_wall = K.make_pbr_mat("Rem_WallBrick", "Brick", "#B45E4A", uv_scale=3.6, emission_lift=0.16)
+    m_steel = K.make_pbr_mat("Rem_BeamSteel", "Metal", "#4E5662", uv_scale=2.5, emission_lift=0.14)
+    m_crate = K.make_pbr_mat("Rem_CrateWood", "WoodPlanks", "#C89B62", uv_scale=3.0, emission_lift=0.16)
+    m_gold = K.make_toon_mat("Rem_GoldPlaque", "#E2B23C", emission_lift=0.25, roughness=0.30)
+
+    K.add_box("Rem_Floor", (16.0, 12.0, 0.4), (0.0, 0.0, -0.20), m_floor, col)
+    K.add_box("Rem_BackWall", (16.0, 0.5, 7.0), (0.0, -3.6, 3.4), m_wall, col)
+    for px in (-3.6, 3.6):
+        K.add_box(f"Rem_SteelColumn_{px}", (0.34, 0.34, 6.8), (px, -2.4, 3.4), m_steel, col, outline=0.018)
+
+    # Assembly counter + showroom Remington No. 1 typewriter
+    K.add_box("Rem_Counter", (4.4, 1.7, 1.02), (0.0, -0.50, 0.51), m_crate, col, bevel=0.03, outline=0.022)
+    tw_root, typebars, jam_spark = _build_mechanical_typewriter("Rem_ShowroomTW", (0.0, -0.45, 1.02), col, scale=1.05, rot_z_deg=-8.0, body_hex="#181B22")
+
+    # Background assembly line units & shipping crates stamped gold
+    for bx in (-1.55, 1.55):
+        K.add_box(f"Rem_Crate_{bx}", (0.92, 0.78, 0.72), (bx, -1.95, 0.36), m_crate, col, bevel=0.02, rot_deg=(0.0, 0.0, 10.0 if bx < 0 else -12.0), outline=0.018)
+        K.add_box(f"Rem_CrateBand_{bx}", (0.94, 0.80, 0.10), (bx, -1.95, 0.44), m_gold, col, rot_deg=(0.0, 0.0, 10.0 if bx < 0 else -12.0))
+
+    K.add_warm_lantern("Rem_WorkLightL", (-2.2, -1.2, 4.1), col, color_hex="#FFE6AA", energy=80.0, radius=0.16)
+    K.add_warm_lantern("Rem_WorkLightR", (2.2, -1.2, 4.1), col, color_hex="#FFE6AA", energy=80.0, radius=0.16)
+
+    return {
+        "col": col,
+        "sky": ("#94C4EA", "#D8ECFC", 1.15),
+        "typewriter_root": tw_root,
+        "typebars": typebars,
+        "jam_spark": jam_spark,
+        "fg_framing": [
+            K.add_foreground_framing_prop("Rem_FgBeam", "railing", (-1.85, 2.55, 0.25), col, scale=0.72, rot_deg=(0.0, 0.0, -14.0)),
+        ],
+    }
+
+
+def build_editorial_newsroom_set(col: bpy.types.Collection, frame_end: int = 60) -> dict:
+    """Sunlit city newsroom & modern legacy desk with stacks of fresh newspapers, brass nameplate & QWERTY machine."""
+    K.add_cinematic_3point_rig(
+        "NewsroomRig",
+        col,
+        key_loc=(1.7, 4.2, 4.2),
+        fill_loc=(-2.8, 4.0, 2.6),
+        rim_loc=(0.0, -2.4, 3.4),
+        key_color="#FFF7E4",
+        fill_color="#B8D8FA",
+        rim_color="#FFE29E",
+        key_energy=245.0,
+        fill_energy=105.0,
+        rim_energy=165.0,
+    )
+
+    m_floor = K.make_pbr_mat("News_Floor", "WoodPlanks", "#A67C52", uv_scale=4.0, emission_lift=0.15)
+    m_wall = K.make_pbr_mat("News_Wall", "Slate", "#6E7F94", uv_scale=3.2, emission_lift=0.18)
+    m_desk = K.make_pbr_mat("News_Desk", "Wood", "#7E5636", uv_scale=3.0, emission_lift=0.14)
+    m_paper = K.make_toon_mat("News_PaperStack", "#EFE4C8", emission_lift=0.28, roughness=0.65)
+    m_ink = K.make_toon_mat("News_InkBar", "#2A2E38", emission_lift=0.10)
+    m_brass = K.make_toon_mat("News_Brass", "#E0B23C", emission_lift=0.22, roughness=0.30)
+
+    K.add_box("News_Floor", (14.0, 12.0, 0.4), (0.0, 0.0, -0.20), m_floor, col)
+    K.add_box("News_BackWall", (14.0, 0.5, 6.6), (0.0, -3.4, 3.2), m_wall, col)
+    K.add_box("News_DeskTop", (3.8, 1.85, 0.16), (0.0, -0.40, 1.00), m_desk, col, bevel=0.03, outline=0.022)
+    for lx in (-1.65, 1.65):
+        for ly in (-1.15, 0.35):
+            K.add_cylinder(f"News_Leg_{lx}_{ly}", 0.09, 0.94, (lx, ly, 0.47), m_desk, col, outline=0.014)
+
+    tw_root, typebars, jam_spark = _build_mechanical_typewriter("News_QWERTY", (0.15, -0.35, 1.08), col, scale=1.02, rot_z_deg=-10.0)
+
+    # Stacked newspaper bundles beside desk
+    for si, (sx, sy, sz, rot_z) in enumerate(((-1.35, -0.35, 1.18, 12.0), (-1.42, -0.30, 1.32, -8.0))):
+        K.add_box(f"News_Stack_{si}", (0.64, 0.48, 0.12), (sx, sy, sz), m_paper, col, bevel=0.01, rot_deg=(0.0, 0.0, rot_z), outline=0.014)
+        K.add_box(f"News_StackInk_{si}", (0.50, 0.12, 0.02), (sx, sy, sz + 0.068), m_ink, col, rot_deg=(0.0, 0.0, rot_z))
+
+    K.add_box("News_Nameplate", (0.58, 0.16, 0.16), (1.30, -0.25, 1.16), m_brass, col, bevel=0.015, rot_deg=(-18.0, 0.0, 16.0), outline=0.014)
+
+    return {
+        "col": col,
+        "sky": ("#8EC2EA", "#D8ECFC", 1.15),
+        "typewriter_root": tw_root,
+        "typebars": typebars,
+        "jam_spark": jam_spark,
+        "fg_framing": [
+            K.add_foreground_framing_prop("News_FgEdge", "drafting_edge", (1.70, 2.45, 0.45), col, scale=0.72, rot_deg=(0.0, 0.0, 15.0)),
+        ],
+    }
+
+
 SET_BUILDERS = {
     "meadow": build_wwii_meadow_set,
     "forest_sonic": build_wwii_forest_sonic_set,
@@ -1476,4 +1718,7 @@ SET_BUILDERS = {
     "glomar_ship": build_glomar_ship_set,
     "azorian_abyss": build_azorian_abyss_set,
     "cia_briefing": build_cia_briefing_set,
+    "typewriter_workshop": build_typewriter_workshop_set,
+    "remington_factory": build_remington_factory_set,
+    "editorial_newsroom": build_editorial_newsroom_set,
 }

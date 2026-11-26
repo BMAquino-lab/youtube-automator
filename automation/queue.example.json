@@ -66,17 +66,21 @@
       "master_mp4": "outputs/ep09_glomar_explorer_sub/master.mp4",
       "qa_report_json": "outputs/ep09_glomar_explorer_sub/qa_report.json",
       "contact_sheet_jpg": "outputs/ep09_glomar_explorer_sub/contact_sheet.jpg",
-      "status": "ready",
+      "status": "published",
       "iteration": 7
+    },
+    {
+      "episode_id": "ep10_backward_typewriter_keys",
+      "title": "Why Keyboard Letters Are Scrambled Out Of Order",
+      "description": "In 1868, inventor Christopher Latham Sholes deliberately scrambled alphabetical typewriter keys into QWERTY so neighboring mechanical typebar hammers would stop colliding and jamming mid-word. #shorts #history #engineering #qwerty #fivestack",
+      "master_mp4": "outputs/ep10_backward_typewriter_keys/master.mp4",
+      "qa_report_json": "outputs/ep10_backward_typewriter_keys/qa_report.json",
+      "contact_sheet_jpg": "outputs/ep10_backward_typewriter_keys/contact_sheet.jpg",
+      "status": "ready",
+      "iteration": 8
     }
   ],
   "topic_backlog": [
-    {
-      "slug": "ep10_backward_typewriter_keys",
-      "title_idea": "Why Keyboard Letters Are Scrambled Out Of Order",
-      "hook_object": "typebar hammers",
-      "summary": "Christopher Latham Sholes rearranged common adjacent letter pairs into QWERTY so neighboring mechanical typebars would stop colliding and jamming mid-word."
-    },
     {
       "slug": "ep11_london_fake_house",
       "title_idea": "Why This Expensive London Townhouse Has Painted Windows",
@@ -106,6 +110,12 @@
       "title_idea": "Why Engineers Curved Submarine Blades Like Banana Peels",
       "hook_object": "skewed blades",
       "summary": "Changing stiff symmetric bronze propeller blades to swept five- and seven-blade skewed geometry eliminated collapsing cavitation bubbles that gave submarines away on sonar."
+    },
+    {
+      "slug": "ep16_tacoma_bridge_wind",
+      "title_idea": "Why A Flat Steel Bridge Twisted Like A Ribbon",
+      "hook_object": "solid girders",
+      "summary": "Replacing open lattice trusses with sleek solid plate girders trapped aerodynamic flutter until 42 mph winds tore Galloping Gertie apart in four months."
     }
   ]
 }
